@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5">
+  <title>NexAgent · 轻量AI调用</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,1" />
+  <style>
+    /* ===== 全局重置 & 工业风格 ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', 'Roboto', 'Consolas', monospace;
+      background: #1a1d23;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px 20px;
+      color: #e0e8f0;
+      line-height: 1.5;
+    }
+
+    .app {
+      max-width: 960px;
+      width: 100%;
+    }
+
+    /* ===== 品牌标题 ===== */
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+      padding: 0 4px;
+      border-bottom: 1px solid #2f3644;
+      padding-bottom: 16px;
+    }
+
+    .brand-header .logo-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      background: #4a8bf5;
+      color: #14181e;
+      font-size: 26px;
+      border: 1px solid #4a8bf5;
+      flex-shrink: 0;
+    }
+
+    .brand-header .brand-text .name {
+      font-size: 1.6rem;
+      font-weight: 300;
+      letter-spacing: 0.5px;
+      color: #e8edf3;
+      line-height: 1.2;
+    }
+    .brand-header .brand-text .name span { color: #4a8bf5; font-weight: 600; }
+    .brand-header .brand-text .sub {
+      font-size: 0.8rem;
+      color: #8a9bb5;
+      letter-spacing: 0.3px;
+      margin-top: 2px;
+    }
+    .brand-header .badge-version {
+      margin-left: auto;
+      border: 1px solid #3a4050;
+      padding: 4px 16px;
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: #8a9bb5;
+      letter-spacing: 0.5px;
+      font-family: 'Consolas', monospace;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .brand-header .badge-version .material-symbols-outlined { font-size: 16px; color: #4a8bf5; }
+
+    @media (max-width: 540px) {
+      .brand-header { flex-wrap: wrap; }
+      .brand-header .badge-version { margin-left: 0; }
+    }
+
+    /* ===== 卡片 ===== */
+    .card {
+      background: #23272e;
+      border: 1px solid #3a4050;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #2f3644;
+      padding-bottom: 10px;
+    }
+    .card-header .material-symbols-outlined {
+      font-size: 24px;
+      color: #4a8bf5;
+    }
+    .card-header h2 {
+      font-size: 1.1rem;
+      font-weight: 500;
+      color: #e0e8f0;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: 'Consolas', monospace;
+      margin: 0;
+    }
+    .card-header .badge {
+      margin-left: auto;
+      border: 1px solid #3a4050;
+      padding: 2px 14px;
+      font-size: 0.65rem;
+      font-weight: 400;
+      color: #8a9bb5;
+      letter-spacing: 0.3px;
+      font-family: 'Consolas', monospace;
+    }
+
+    /* ===== 配置表单 ===== */
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 20px;
+    }
+    @media (max-width: 640px) { .config-grid { grid-template-columns: 1fr; gap: 12px; } }
+
+    .config-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .config-item label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #8a9bb5;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: 'Consolas', monospace;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .config-item label .material-symbols-outlined { font-size: 18px; color: #4a8bf5; }
+    .config-item input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #3a4050;
+      font-size: 0.9rem;
+      font-family: 'Consolas', monospace;
+      background: #14181e;
+      color: #e0e8f0;
+      transition: all 0.15s ease;
+      outline: none;
+    }
+    .config-item input:focus {
+      border-color: #4a8bf5;
+      box-shadow: inset 0 0 0 1px #4a8bf5;
+    }
+    .config-item input::placeholder { color: #4a5a6e; font-weight: 300; }
+
+    .config-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    /* ===== 按钮 ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 20px;
+      border: 1px solid #4a8bf5;
+      font-size: 0.8rem;
+      font-weight: 500;
+      font-family: 'Consolas', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: transparent;
+      color: #4a8bf5;
+    }
+    .btn .material-symbols-outlined { font-size: 18px; }
+    .btn:hover { background: #4a8bf5; color: #14181e; }
+
+    .btn-primary {
+      background: #4a8bf5;
+      color: #14181e;
+      border-color: #4a8bf5;
+    }
+    .btn-primary:hover { background: #3a7ae0; }
+
+    .btn-secondary {
+      border-color: #3a4050;
+      color: #8a9bb5;
+    }
+    .btn-secondary:hover { background: #2f3644; color: #e0e8f0; }
+
+    .btn-danger {
+      border-color: #e74c3c;
+      color: #e74c3c;
+    }
+    .btn-danger:hover { background: #e74c3c; color: #14181e; }
+
+    /* ===== 聊天区域 ===== */
+    .chat-box {
+      min-height: 280px;
+      max-height: 440px;
+      overflow-y: auto;
+      background: #14181e;
+      padding: 16px 18px;
+      border: 1px solid #2f3644;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 14px;
+      scroll-behavior: smooth;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .chat-box::-webkit-scrollbar { width: 6px; }
+    .chat-box::-webkit-scrollbar-thumb { background: #3a4050; }
+    .chat-box::-webkit-scrollbar-track { background: transparent; }
+
+    .chat-empty {
+      color: #4a5a6e;
+      text-align: center;
+      padding: 40px 0 24px;
+      font-size: 0.9rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .chat-empty .material-symbols-outlined { font-size: 44px; color: #2f3644; }
+
+    .chat-message {
+      margin-bottom: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .chat-message .avatar {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border: 1px solid #3a4050;
+      background: #1a1d23;
+      color: #8a9bb5;
+    }
+    .chat-message .avatar.user { border-color: #4a8bf5; color: #4a8bf5; }
+    .chat-message .avatar.ai { border-color: #2ecc71; color: #2ecc71; }
+
+    .chat-message .bubble {
+      background: #23272e;
+      padding: 8px 14px;
+      border: 1px solid #2f3644;
+      max-width: 88%;
+      color: #e0e8f0;
+    }
+    .chat-message.user .bubble {
+      border-color: #4a8bf5;
+      background: #1a2029;
+    }
+    .chat-message.ai .bubble { background: #23272e; }
+
+    .chat-message .bubble .msg-label {
+      font-weight: 500;
+      font-size: 0.65rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #4a5a6e;
+      margin-bottom: 2px;
+      font-family: 'Consolas', monospace;
+    }
+    .chat-message .bubble .msg-content { word-break: break-word; }
+    .chat-message .bubble .msg-content .error { color: #e74c3c; font-weight: 500; }
+
+    /* ===== 输入区 ===== */
+    .input-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .input-row textarea {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #3a4050;
+      font-size: 0.9rem;
+      font-family: 'Segoe UI', sans-serif;
+      resize: vertical;
+      min-height: 54px;
+      max-height: 120px;
+      background: #14181e;
+      color: #e0e8f0;
+      transition: 0.2s;
+      line-height: 1.5;
+      outline: none;
+    }
+    .input-row textarea:focus {
+      border-color: #4a8bf5;
+      box-shadow: inset 0 0 0 1px #4a8bf5;
+    }
+    .input-row textarea::placeholder { color: #4a5a6e; }
+
+    .input-row .btn { padding: 10px 24px; height: fit-content; }
+
+    .footer-hint {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 0.7rem;
+      color: #4a5a6e;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      font-family: 'Consolas', monospace;
+    }
+    .footer-hint .hint-item { display: flex; align-items: center; gap: 4px; }
+    .footer-hint .hint-item .material-symbols-outlined { font-size: 16px; color: #3a4050; }
+    .footer-hint code {
+      background: #14181e;
+      padding: 2px 12px;
+      font-size: 0.7rem;
+      font-family: 'Consolas', monospace;
+      border: 1px solid #2f3644;
+      color: #8a9bb5;
+    }
+
+    .status-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px 24px;
+      padding-top: 6px;
+      font-size: 0.75rem;
+      color: #4a5a6e;
+      font-family: 'Consolas', monospace;
+    }
+    .status-bar .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: #2ecc71;
+      margin-right: 4px;
+      border: 1px solid #2ecc71;
+    }
+    .status-bar .dot.inactive { background: #3a4050; border-color: #3a4050; }
+
+    @media (max-width: 480px) {
+      .card { padding: 16px 14px; }
+      .chat-box { padding: 12px 14px; min-height: 200px; }
+      .input-row { flex-wrap: wrap; }
+      .input-row textarea { min-height: 46px; }
+      .input-row .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===== 品牌标题 ===== -->
+  <div class="brand-header">
+    <div class="logo-icon">
+      <span class="material-symbols-outlined" style="font-size:28px;">bolt</span>
+    </div>
+    <div class="brand-text">
+      <div class="name">Nex<span>Agent</span></div>
+      <div class="sub">轻量人工智能 API 调用</div>
+    </div>
+    <div class="badge-version">
+      <span class="material-symbols-outlined">check_circle</span> v1.0
+    </div>
+  </div>
+
+  <!-- ===== 配置卡片 ===== -->
+  <div class="card">
+    <div class="card-header">
+      <span class="material-symbols-outlined">tune</span>
+      <h2>API 配置</h2>
+      <span class="badge">本地存储</span>
+    </div>
+
+    <div class="config-grid">
+      <div class="config-item">
+        <label><span class="material-symbols-outlined">link</span> 接口地址</label>
+        <input type="text" id="baseUrl" placeholder="https://api.deepseek.com/v1/chat/completions" />
+      </div>
+      <div class="config-item">
+        <label><span class="material-symbols-outlined">key</span> API Key</label>
+        <input type="text" id="apiKey" placeholder="sk- 你的密钥" />
+      </div>
+      <div class="config-item">
+        <label><span class="material-symbols-outlined">smart_toy</span> 模型名称</label>
+        <input type="text" id="modelName" placeholder="deepseek-chat" />
+      </div>
+      <div class="config-item" style="justify-content: flex-end;">
+        <div class="config-actions" style="margin-top: 0;">
+          <button class="btn btn-primary" onclick="saveConfig()">
+            <span class="material-symbols-outlined">save</span> 保存
+          </button>
+          <button class="btn btn-secondary" onclick="clearChat()">
+            <span class="material-symbols-outlined">delete</span> 清空
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <span><span class="dot" id="statusDot"></span> <span id="statusText">就绪</span></span>
+      <span>🌐 Worker: <code id="workerDisplay">加载中...</code></span>
+      <span>🔒 密钥仅保存在浏览器</span>
+    </div>
+  </div>
+
+  <!-- ===== 聊天卡片 ===== -->
+  <div class="card">
+    <div class="card-header">
+      <span class="material-symbols-outlined">chat</span>
+      <h2>对话</h2>
+      <span class="badge">流式响应</span>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+      <div class="chat-empty">
+        <span class="material-symbols-outlined">forum</span>
+        <span>输入问题开始对话 · 支持流式打字机效果</span>
+      </div>
+    </div>
+
+    <div class="input-row">
+      <textarea id="userInput" placeholder="输入问题，Ctrl+Enter 发送" rows="2"></textarea>
+      <button class="btn btn-primary" onclick="sendChat()">
+        <span class="material-symbols-outlined">send</span> 发送
+      </button>
+    </div>
+    <div class="footer-hint">
+      <span class="hint-item"><span class="material-symbols-outlined">shield</span> API Key 通过请求头传递</span>
+      <span class="hint-item"><span class="material-symbols-outlined">keyboard</span> Ctrl+Enter 快捷发送</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ================================================================
+  //  请将下方地址替换为你部署的 Worker 地址
+  // ================================================================
+  const WORKER_PROXY_URL = "https://ai-api-proxy.dis310.workers.dev";
+
+  const chatBox = document.getElementById('chatBox');
+  const userInput = document.getElementById('userInput');
+  const baseUrlInput = document.getElementById('baseUrl');
+  const apiKeyInput = document.getElementById('apiKey');
+  const modelNameInput = document.getElementById('modelName');
+  const workerDisplay = document.getElementById('workerDisplay');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+
+  workerDisplay.textContent = WORKER_PROXY_URL.replace('https://', '');
+
+  const saved = JSON.parse(localStorage.getItem('aiChatConfig') || '{}');
+  baseUrlInput.value = saved.baseUrl || 'https://api.deepseek.com/v1/chat/completions';
+  apiKeyInput.value = saved.apiKey || '';
+  modelNameInput.value = saved.modelName || 'deepseek-chat';
+
+  function saveConfig() {
+    const baseUrl = baseUrlInput.value.trim();
+    const apiKey = apiKeyInput.value.trim();
+    const modelName = modelNameInput.value.trim();
+    if (!baseUrl || !apiKey || !modelName) {
+      alert('请完整填写接口地址、API Key 和模型名称');
+      return;
+    }
+    localStorage.setItem('aiChatConfig', JSON.stringify({ baseUrl, apiKey, modelName }));
+    setStatus('配置已保存', true);
+    alert('✅ 配置已保存 (仅本地浏览器)');
+  }
+
+  function clearChat() {
+    chatBox.innerHTML = `<div class="chat-empty"><span class="material-symbols-outlined">forum</span><span>对话已清空</span></div>`;
+    setStatus('已清空', false);
+  }
+
+  function setStatus(text, ok = true) {
+    statusText.textContent = text;
+    statusDot.className = 'dot' + (ok ? '' : ' inactive');
+  }
+
+  async function sendChat() {
+    const baseUrl = baseUrlInput.value.trim();
+    const apiKey = apiKeyInput.value.trim();
+    const model = modelNameInput.value.trim();
+    const content = userInput.value.trim();
+
+    if (!baseUrl || !apiKey || !content) {
+      alert('请完整填写接口地址、API Key 和问题内容');
+      return;
+    }
+    if (!WORKER_PROXY_URL || WORKER_PROXY_URL.includes('你的用户名')) {
+      alert('⚠️ 请先修改代码中的 WORKER_PROXY_URL 为你的 Worker 地址！');
+      return;
+    }
+
+    userInput.value = '';
+
+    if (chatBox.querySelector('.chat-empty')) {
+      chatBox.innerHTML = '';
+    }
+
+    const msgId = 'msg-' + Date.now();
+
+    const userMsgDiv = document.createElement('div');
+    userMsgDiv.className = 'chat-message user';
+    userMsgDiv.innerHTML = `
+      <div class="avatar user"><span class="material-symbols-outlined">person</span></div>
+      <div class="bubble"><div class="msg-content">${escapeHtml(content)}</div></div>
+    `;
+    chatBox.appendChild(userMsgDiv);
+
+    const aiMsgDiv = document.createElement('div');
+    aiMsgDiv.className = 'chat-message ai';
+    aiMsgDiv.id = msgId;
+    aiMsgDiv.innerHTML = `
+      <div class="avatar ai"><span class="material-symbols-outlined">smart_toy</span></div>
+      <div class="bubble"><div class="msg-content"><span class="msg-label">AI 思考中...</span></div></div>
+    `;
+    chatBox.appendChild(aiMsgDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    const aiContentDiv = aiMsgDiv.querySelector('.msg-content');
+    let replyText = '';
+
+    const payload = {
+      _target: baseUrl,
+      model: model,
+      stream: true,
+      messages: [{ role: 'user', content: content }]
+    };
+
+    setStatus('请求中...', true);
+
+    try {
+      const response = await fetch(WORKER_PROXY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errMsg = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errMsg.substring(0, 120)}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      setStatus('接收流式数据...', true);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data: ')) continue;
+          const data = trimmed.replace('data: ', '');
+          if (data === '[DONE]') continue;
+
+          try {
+            const json = JSON.parse(data);
+            const delta = json.choices?.[0]?.delta?.content;
+            if (delta) {
+              replyText += delta;
+              aiContentDiv.innerHTML = `<span class="msg-label">AI</span> ${escapeHtml(replyText)}`;
+              chatBox.scrollTop = chatBox.scrollHeight;
+            }
+          } catch (_) { /* 忽略解析错误 */ }
+        }
+      }
+
+      if (!replyText) {
+        aiContentDiv.innerHTML = `<span class="msg-label">AI</span> (无内容返回)`;
+      } else {
+        aiContentDiv.innerHTML = `<span class="msg-label">AI</span> ${escapeHtml(replyText)}`;
+      }
+
+      setStatus('就绪', true);
+
+    } catch (error) {
+      aiContentDiv.innerHTML = `<span class="error">⚠️ 错误</span> ${escapeHtml(error.message)}`;
+      setStatus('请求失败', false);
+    }
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  userInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      sendChat();
+    }
+  });
+
+  window.addEventListener('load', function() {
+    const key = apiKeyInput.value.trim();
+    if (key) {
+      const baseUrl = baseUrlInput.value.trim();
+      const model = modelNameInput.value.trim();
+      if (baseUrl && model) {
+        localStorage.setItem('aiChatConfig', JSON.stringify({ baseUrl, apiKey: key, modelName: model }));
+        setStatus('配置已加载', true);
+      }
+    }
+  });
+
+  setStatus('就绪', true);
+</script>
+
+</body>
+</html>

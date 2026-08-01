@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>高级编辑器</title>
+
+    <!-- Metro UI CSS (直角风格) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/metro-ui@5.0.2/dist/css/metro-all.min.css" />
+    <!-- CodeMirror 核心 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+    <!-- CodeMirror 提示插件 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js">
+    </script>
+    <!-- 核心插件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js">
+    </script>
+    <!-- 提示插件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/anyword-hint.min.js">
+    </script>
+    <!-- 语言模式 (按需加载) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/properties/properties.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js">
+    </script>
+
+    <style>
+        /* ===== 全局重置 ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', '微软雅黑', sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            overflow: hidden;
+        }
+
+        /* ===== 主容器（直角边框） ===== */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border: 1px solid #d0d7e2;
+            border-radius: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        /* ===== 顶部工具栏 ===== */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e0e6ed;
+            flex-wrap: wrap;
+        }
+        .toolbar .btn-group {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .toolbar .separator {
+            width: 1px;
+            height: 28px;
+            background: #d0d7e2;
+            margin: 0 6px;
+        }
+        .toolbar .file-name {
+            flex: 1;
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .toolbar .file-name label {
+            font-size: 13px;
+            color: #4a5a6e;
+            white-space: nowrap;
+        }
+        .toolbar .file-name input {
+            flex: 1;
+            padding: 4px 8px;
+            border: 1px solid #d0d7e2;
+            border-radius: 0;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+        }
+        .toolbar .file-name input:focus {
+            border-color: #0078D7;
+        }
+
+        /* Metro 风格按钮 (直角) */
+        .button {
+            border-radius: 0 !important;
+            font-size: 13px;
+            padding: 4px 12px;
+            height: 28px;
+            border: 1px solid #d0d7e2;
+            background: #fff;
+            color: #1f2a3a;
+            cursor: pointer;
+            transition: 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .button:hover {
+            background: #f0f4fe;
+            border-color: #0078D7;
+        }
+        .button.primary {
+            background: #0078D7;
+            border-color: #0078D7;
+            color: #fff;
+        }
+        .button.primary:hover {
+            background: #005a9e;
+            border-color: #005a9e;
+        }
+        .button.success {
+            background: #107c10;
+            border-color: #107c10;
+            color: #fff;
+        }
+        .button.success:hover {
+            background: #0a5c0a;
+        }
+        .button.danger {
+            color: #d13438;
+        }
+        .button.danger:hover {
+            background: #fce8e6;
+            border-color: #d13438;
+        }
+
+        /* ===== 编辑器主体 ===== */
+        .editor-wrapper {
+            flex: 1;
+            position: relative;
+            background: #fff;
+        }
+        .editor-wrapper .CodeMirror {
+            height: 100% !important;
+            font-size: 14px;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        /* ===== 状态栏 ===== */
+        .statusbar {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 12px;
+            background: #f8fafc;
+            border-top: 1px solid #e0e6ed;
+            font-size: 13px;
+            color: #4a5a6e;
+        }
+
+        /* ===== 底部快捷面板 ===== */
+        .quick-panel {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            background: #f8fafc;
+            border-top: 1px solid #e0e6ed;
+            flex-wrap: wrap;
+        }
+        .quick-panel .label {
+            font-size: 13px;
+            color: #4a5a6e;
+            margin-right: 8px;
+        }
+        .quick-panel .button {
+            font-size: 12px;
+            padding: 2px 10px;
+            height: 26px;
+        }
+        .quick-panel .button .emacs-hint {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-left: 4px;
+            font-weight: 300;
+        }
+
+        /* ===== 设置模态框 ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: #fff;
+            border: 1px solid #d0d7e2;
+            border-radius: 0;
+            padding: 24px 28px 20px;
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+        .modal-box h3 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-weight: 400;
+            font-size: 20px;
+            color: #1a1a2e;
+        }
+        .modal-box .field {
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-box .field label {
+            width: 70px;
+            font-size: 14px;
+            color: #1f2a3a;
+            flex-shrink: 0;
+        }
+        .modal-box .field select {
+            flex: 1;
+            padding: 4px 8px;
+            border: 1px solid #d0d7e2;
+            border-radius: 0;
+            font-size: 13px;
+            background: #fff;
+            outline: none;
+        }
+        .modal-box .field select:focus {
+            border-color: #0078D7;
+        }
+        .modal-box .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 18px;
+        }
+
+        /* ===== Toast 消息 ===== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 4px;
+            font-size: 14px;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+        .toast.success {
+            background: #107c10;
+        }
+        .toast.error {
+            background: #d13438;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 700px) {
+            body {
+                padding: 6px;
+            }
+            .toolbar {
+                gap: 4px;
+                padding: 6px 8px;
+            }
+            .toolbar .file-name {
+                min-width: 80px;
+            }
+            .quick-panel {
+                gap: 2px;
+                padding: 4px 8px;
+            }
+            .quick-panel .button {
+                font-size: 11px;
+                padding: 2px 6px;
+                height: 24px;
+            }
+            .quick-panel .label {
+                font-size: 11px;
+                margin-right: 4px;
+            }
+            .modal-box {
+                min-width: 260px;
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="editor-container">
+        <!-- ===== 顶部工具栏 ===== -->
+        <div class="toolbar">
+            <div class="btn-group">
+                <button class="button" id="btnNew" title="新建文件 (Ctrl+N)">新建</button>
+                <button class="button" id="btnOpen" title="打开文件 (Ctrl+O)">打开</button>
+            </div>
+            <div class="separator"></div>
+            <div class="file-name">
+                <label>路径:</label>
+                <input type="text" id="fileNameInput" placeholder="文件名或路径" value="未命名" />
+            </div>
+            <div style="flex:1;"></div>
+            <button class="button primary" id="btnSettings" title="编辑器设置">设置</button>
+        </div>
+
+        <!-- ===== 编辑器区域 ===== -->
+        <div class="editor-wrapper">
+            <textarea id="editorTextarea" style="display:none;"></textarea>
+        </div>
+
+        <!-- ===== 状态栏 ===== -->
+        <div class="statusbar">
+            <span id="statusInfo">行数: 0 | 字节数: 0</span>
+            <span id="statusMode">模式: 纯文本</span>
+        </div>
+
+        <!-- ===== 底部快捷面板 ===== -->
+        <div class="quick-panel">
+            <span class="label">快捷编辑</span>
+            <button class="button" id="btnDownload" title="下载到本地 (C-x C-s)">下载 <span class="emacs-hint">C-x C-s</span></button>
+            <button class="button" id="btnSelectAll" title="全选 (C-x h)">全选 <span class="emacs-hint">C-x h</span></button>
+            <button class="button" id="btnInvert" title="反选 (C-/)">反选 <span class="emacs-hint">C-/</span></button>
+            <button class="button" id="btnCut" title="剪切 (C-w)">裁剪 <span class="emacs-hint">C-w</span></button>
+            <button class="button" id="btnInsert" title="插入 (C-y)">插入 <span class="emacs-hint">C-y</span></button>
+            <button class="button danger" id="btnClear" title="清空 (C-x C-d)">清空 <span class="emacs-hint">C-x C-d</span></button>
+        </div>
+    </div>
+
+    <!-- ===== 设置模态框 ===== -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-box">
+            <h3>编辑器设置</h3>
+            <div class="field">
+                <label>高亮:</label>
+                <select id="selLanguage">
+                    <option value="text/plain">纯文本</option>
+                    <option value="text/x-csrc">C</option>
+                    <option value="text/html">HTML</option>
+                    <option value="text/x-ini">INI</option>
+                    <option value="application/json">JSON</option>
+                    <option value="text/x-desktop">DESKTOP</option>
+                    <option value="text/x-python">Python</option>
+                    <option value="text/x-properties">INF/CFG/CONFIG</option>
+                    <option value="text/x-markdown">Markdown</option>
+                    <option value="text/css">CSS</option>
+                    <option value="text/x-java">Java</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>字体:</label>
+                <select id="selFont">
+                    <option value="Consolas">Consolas</option>
+                    <option value="'Courier New'">Courier New</option>
+                    <option value="'微软雅黑'">微软雅黑</option>
+                    <option value="'DejaVu Sans Mono'">DejaVu Sans Mono</option>
+                    <option value="monospace">monospace</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>符号补全:</label>
+                <select id="selCompletion">
+                    <option value="fullwidth">全角/书信</option>
+                    <option value="halfwidth" selected>半角/编程</option>
+                    <option value="spanish">西语/扩展</option>
+                    <option value="none">无</option>
+                </select>
+            </div>
+            <div class="actions">
+                <button class="button primary" id="btnModalClose">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 消息 -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // ============================================================
+        //  1. CodeMirror 初始化
+        // ============================================================
+        const textarea = document.getElementById('editorTextarea');
+        const editor = CodeMirror.fromTextArea(textarea, {
+            lineNumbers: true,
+            mode: 'text/plain',
+            theme: 'default',
+            autoCloseBrackets: { pairs: "()[]{}''\"\"" },
+            autoCloseTags: true,
+            extraKeys: {
+                "Ctrl-S": function(cm) { downloadFile(); },
+                "Ctrl-O": function(cm) { openFile(); },
+                "Ctrl-N": function(cm) { newFile(); },
+                "Ctrl-A": function(cm) { cm.execCommand('selectAll'); },
+                "Ctrl-X": function(cm) { cutSelection(); },
+                "Ctrl-/": function(cm) { invertSelection(); },
+                "Ctrl-Y": function(cm) { insertSomething(); },
+                "Ctrl-Shift-D": function(cm) { clearContent(); },
+                "Ctrl-Space": "autocomplete", // 智能补全触发
+            }
+        });
+
+        // ============================================================
+        //  2. 状态更新
+        // ============================================================
+        function updateStatus() {
+            const lines = editor.lineCount();
+            const content = editor.getValue();
+            const bytes = new Blob([content]).size;
+            document.getElementById('statusInfo').textContent =
+                `行数: ${lines} | 字节数: ${bytes}`;
+            const mode = editor.getOption('mode');
+            const modeName = mode === 'text/plain' ? '纯文本' : mode;
+            document.getElementById('statusMode').textContent = `模式: ${modeName}`;
+        }
+        editor.on('change', updateStatus);
+        setTimeout(updateStatus, 50);
+
+        // ============================================================
+        //  3. 文件操作
+        // ============================================================
+        const fileNameInput = document.getElementById('fileNameInput');
+
+        function getFilePath() {
+            return fileNameInput.value.trim() || '未命名';
+        }
+
+        // 新建
+        function newFile() {
+            if (editor.getValue() && !confirm('当前内容未保存，确定新建？')) return;
+            editor.setValue('');
+            fileNameInput.value = '未命名';
+            updateStatus();
+            showToast('新建文件', 'success');
+        }
+        document.getElementById('btnNew').addEventListener('click', newFile);
+
+        // 打开
+        function openFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '*/*';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    editor.setValue(ev.target.result);
+                    fileNameInput.value = file.name;
+                    updateStatus();
+                    showToast(`已打开: ${file.name}`, 'success');
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+        document.getElementById('btnOpen').addEventListener('click', openFile);
+
+        // ============================================================
+        //  4. 下载（保存到本地）
+        // ============================================================
+        function downloadFile() {
+            const content = editor.getValue();
+            const name = getFilePath();
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name.split('/').pop() || '未命名'; // 取最后一部分作为文件名
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`已下载: ${name}`, 'success');
+        }
+        document.getElementById('btnDownload').addEventListener('click', downloadFile);
+        // ============================================================
+        //  6. 编辑功能
+        // ============================================================
+        // 全选
+        document.getElementById('btnSelectAll').addEventListener('click', function() {
+            editor.execCommand('selectAll');
+        });
+
+        // 反选
+        function invertSelection() {
+            const doc = editor.getDoc();
+            const fullRange = { from: { line: 0, ch: 0 }, to: { line: doc.lastLine(), ch: doc.getLine(
+                        doc.lastLine()).length } };
+            const selected = doc.getSelection();
+            const fullText = doc.getValue();
+            if (selected === fullText) {
+                doc.setSelection(fullRange.to, fullRange.to);
+            } else {
+                doc.setSelection(fullRange.from, fullRange.to);
+            }
+        }
+        document.getElementById('btnInvert').addEventListener('click', invertSelection);
+
+        // 剪切
+        function cutSelection() {
+            const doc = editor.getDoc();
+            if (doc.somethingSelected()) {
+                const selected = doc.getSelection();
+                doc.replaceSelection('');
+                navigator.clipboard.writeText(selected).catch(() => {});
+            } else {
+                // 剪切当前行
+                const cursor = doc.getCursor();
+                const line = doc.getLine(cursor.line);
+                doc.replaceRange('', { line: cursor.line, ch: 0 }, { line: cursor.line, ch: line.length });
+                // 如果剪切的是空行，删除行？
+            }
+            updateStatus();
+            showToast('已剪切', 'success');
+        }
+        document.getElementById('btnCut').addEventListener('click', cutSelection);
+
+        // 插入
+        function insertSomething() {
+            const doc = editor.getDoc();
+            const cursor = doc.getCursor();
+            const text = prompt('请输入要插入的文本：', 'Hello World!');
+            if (text !== null) {
+                doc.replaceRange(text, cursor);
+                showToast('已插入', 'success');
+            }
+        }
+        document.getElementById('btnInsert').addEventListener('click', insertSomething);
+
+        // 清空
+        function clearContent() {
+            if (editor.getValue() && !confirm('确定清空所有内容？')) return;
+            editor.setValue('');
+            updateStatus();
+            showToast('已清空', 'success');
+        }
+        document.getElementById('btnClear').addEventListener('click', clearContent);
+
+        // ============================================================
+        //  7. 智能补全（关键字补全） - 使用 anyword-hint
+        // ============================================================
+        // 已通过 extraKeys 配置 Ctrl-Space 触发补全
+
+        // ============================================================
+        //  8. 设置对话框
+        // ============================================================
+        const modal = document.getElementById('settingsModal');
+        const selLanguage = document.getElementById('selLanguage');
+        const selFont = document.getElementById('selFont');
+        const selCompletion = document.getElementById('selCompletion');
+
+        document.getElementById('btnSettings').addEventListener('click', function() {
+            const currentMode = editor.getOption('mode');
+            selLanguage.value = currentMode || 'text/plain';
+            const currentFont = editor.getWrapperElement().style.fontFamily || 'Consolas';
+            selFont.value = currentFont.replace(/['"]/g, '');
+            const completionMode = editor._completionMode || 'halfwidth';
+            selCompletion.value = completionMode;
+            modal.classList.add('active');
+        });
+
+        function closeSettings() {
+            modal.classList.remove('active');
+            applySettings();
+        }
+        document.getElementById('btnModalClose').addEventListener('click', closeSettings);
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeSettings();
+        });
+
+        function applySettings() {
+            const lang = selLanguage.value;
+            editor.setOption('mode', lang);
+            const font = selFont.value;
+            editor.getWrapperElement().style.fontFamily = font;
+            editor.refresh();
+            const mode = selCompletion.value;
+            editor._completionMode = mode;
+            updateCompletionMode(mode);
+            updateStatus();
+            showToast('设置已应用', 'success');
+        }
+
+        // ============================================================
+        //  9. 符号补全模式
+        // ============================================================
+        function updateCompletionMode(mode) {
+            let config = null;
+            switch (mode) {
+                case 'fullwidth':
+                    config = { pairs: "（）【】“”‘’" };
+                    break;
+                case 'halfwidth':
+                    config = { pairs: "()[]{}''\"\"" };
+                    break;
+                case 'spanish':
+                    config = { pairs: "()[]{}''\"\"" };
+                    // 可扩展
+                    break;
+                case 'none':
+                    config = false;
+                    break;
+                default:
+                    config = { pairs: "()[]{}''\"\"" };
+            }
+            editor.setOption('autoCloseBrackets', config);
+        }
+
+        // ============================================================
+        //  10. Toast 消息
+        // ============================================================
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast';
+            if (type) toast.classList.add(type);
+            toast.classList.add('show');
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // ============================================================
+        //  11. 全局快捷键 (补充)
+        // ============================================================
+        document.addEventListener('keydown', function(e) {
+            if (modal.classList.contains('active')) return;
+            const ctrl = e.ctrlKey || e.metaKey;
+            const key = e.key.toLowerCase();
+            if (ctrl) {
+                switch (key) {
+                    case 's':
+                        e.preventDefault();
+                        downloadFile();
+                        break;
+                    case 'o':
+                        e.preventDefault();
+                        openFile();
+                        break;
+                    case 'n':
+                        e.preventDefault();
+                        newFile();
+                        break;
+                    case 'a':
+                        e.preventDefault();
+                        editor.execCommand('selectAll');
+                        break;
+                    case 'x':
+                        e.preventDefault();
+                        cutSelection();
+                        break;
+                    case '/':
+                        e.preventDefault();
+                        invertSelection();
+                        break;
+                    case 'y':
+                        e.preventDefault();
+                        insertSomething();
+                        break;
+                    case 'd':
+                        if (e.shiftKey) {
+                            e.preventDefault();
+                            clearContent();
+                        }
+                        break;
+                }
+            }
+        });
+
+        // ============================================================
+        //  12. 初始化完成
+        // ============================================================
+        setTimeout(function() {
+            editor.refresh();
+            updateStatus();
+            updateCompletionMode('halfwidth');
+            showToast('编辑器已就绪', 'success');
+        }, 100);
+
+        console.log('✅ 高级编辑器加载完成');
+        console.log('💡 按 Ctrl+Space 触发智能补全');
+        console.log('💡 使用 "路径" 输入框支持目录，如 "folder/file.txt"');
+    </script>
+
+</body>
+</html>
