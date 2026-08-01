@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexabox Workstation</title>
+    <script src="https://cdn.jsdelivr.net/npm/winbox@0.2.82/dist/winbox.bundle.min.js"></script>
+    <link rel="stylesheet" href="dist/css/themes/modern.min.css">
+    <style>
+        body {
+            background: #1e1e2f;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', sans-serif;
+            color: #ccc;
+            transition: background 0.3s ease;
+            background-size: cover;
+            background-position: center;
+        }
+        .info {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h1>Nexabox workstation</h1>
+        <p style="color: rgba(255,255,255,0.4); font-size: 13px; margin-top: 8px;">Ver:pre-0.4</p>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            console.log('[Nexabox] 已启动');
+
+            var Window_MainMenu = new WinBox({
+                title: '工作台主面板',
+                x: "center",
+                width: "80%",
+                height: "90%",
+                max: false,
+                overflow: false,
+                class: ["modern", "no-full", "no-close"],
+                y: "center",
+                url: 'MainMenu.html'
+            });
+        })();
+    </script>
+</body>
+</html>

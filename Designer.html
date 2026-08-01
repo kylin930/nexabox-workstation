@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI 设计器 · Nexabox</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1d23;
+            font-family: 'Segoe UI', 'Roboto', 'Consolas', monospace;
+            color: #e0e8f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 8px;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 12px;
+            padding: 6px 14px;
+            background: #23272e;
+            border: 1px solid #3a4050;
+            flex-shrink: 0;
+        }
+        .toolbar .group { display: flex; align-items: center; gap: 4px; }
+        .toolbar .group label { font-size: 12px; color: #8a9bb5; font-family: 'Consolas', monospace; }
+        .btn {
+            background: transparent;
+            border: 1px solid #4a8bf5;
+            color: #4a8bf5;
+            padding: 3px 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .btn:hover { background: #4a8bf5; color: #14181e; }
+        .btn-secondary { border-color: #3a4050; color: #8a9bb5; }
+        .btn-secondary:hover { background: #2f3644; color: #e0e8f0; }
+        .btn-danger { border-color: #e74c3c; color: #e74c3c; }
+        .btn-danger:hover { background: #e74c3c; color: #14181e; }
+        .btn-primary { background: #4a8bf5; color: #14181e; border-color: #4a8bf5; }
+        .btn-primary:hover { background: #3a7ae0; }
+
+        .main-area {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            min-height: 0;
+            margin-top: 6px;
+        }
+        .panel-left {
+            width: 140px;
+            background: #23272e;
+            border: 1px solid #3a4050;
+            padding: 8px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .panel-left .ctrl-btn {
+            display: block;
+            width: 100%;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            background: #14181e;
+            border: 1px solid #3a4050;
+            color: #e0e8f0;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .panel-left .ctrl-btn:hover { border-color: #4a8bf5; background: #1a2029; }
+        .panel-left .ctrl-btn .icon { margin-right: 6px; opacity: 0.6; }
+
+        .canvas-wrapper {
+            flex: 1;
+            background: #14181e;
+            border: 1px solid #2f3644;
+            position: relative;
+            overflow: auto;
+            min-width: 0;
+        }
+        .canvas-wrapper .design-canvas {
+            position: relative;
+            background: #ffffff;
+            margin: 20px auto;
+            border: 1px solid #3a4050;
+            box-shadow: 0 0 0 1px #4a8bf5 inset;
+            user-select: none;
+        }
+        .design-canvas .widget {
+            position: absolute;
+            border: 1px solid #a0b0c0;
+            background: #f0f4f8;
+            cursor: move;
+            min-width: 20px;
+            min-height: 20px;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 13px;
+            padding: 4px 6px;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .design-canvas .widget.selected {
+            border-color: #1a73e8;
+            outline: 2px solid #1a73e8;
+            z-index: 10;
+        }
+        .design-canvas .widget .handle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #1a73e8;
+            border: 1px solid #fff;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .design-canvas .widget.selected .handle { opacity: 1; }
+        .design-canvas .widget .handle.nw { top: -4px; left: -4px; cursor: nw-resize; }
+        .design-canvas .widget .handle.n  { top: -4px; left: 50%; margin-left: -4px; cursor: n-resize; }
+        .design-canvas .widget .handle.ne { top: -4px; right: -4px; cursor: ne-resize; }
+        .design-canvas .widget .handle.e  { top: 50%; right: -4px; margin-top: -4px; cursor: e-resize; }
+        .design-canvas .widget .handle.se { bottom: -4px; right: -4px; cursor: se-resize; }
+        .design-canvas .widget .handle.s  { bottom: -4px; left: 50%; margin-left: -4px; cursor: s-resize; }
+        .design-canvas .widget .handle.sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+        .design-canvas .widget .handle.w  { top: 50%; left: -4px; margin-top: -4px; cursor: w-resize; }
+
+        .panel-right {
+            width: 250px;
+            background: #23272e;
+            border: 1px solid #3a4050;
+            padding: 10px 12px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            font-size: 13px;
+        }
+        .panel-right .section {
+            margin-bottom: 14px;
+            border-bottom: 1px solid #2f3644;
+            padding-bottom: 10px;
+        }
+        .panel-right .section-title {
+            font-size: 11px;
+            color: #4a8bf5;
+            text-transform: uppercase;
+            font-family: 'Consolas', monospace;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .panel-right .prop-group {
+            margin-bottom: 6px;
+        }
+        .panel-right .prop-group label {
+            display: block;
+            font-size: 11px;
+            color: #8a9bb5;
+            font-family: 'Consolas', monospace;
+            letter-spacing: 0.3px;
+            margin-bottom: 1px;
+        }
+        .panel-right .prop-group input,
+        .panel-right .prop-group select {
+            width: 100%;
+            padding: 3px 6px;
+            background: #14181e;
+            border: 1px solid #3a4050;
+            color: #e0e8f0;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            outline: none;
+        }
+        .panel-right .prop-group input:focus,
+        .panel-right .prop-group select:focus {
+            border-color: #4a8bf5;
+        }
+        .panel-right .prop-group input[type="color"] {
+            height: 28px;
+            padding: 2px;
+        }
+        .panel-right .prop-group input[type="checkbox"] {
+            width: auto;
+            margin-right: 6px;
+        }
+        .panel-right .prop-row {
+            display: flex;
+            gap: 6px;
+        }
+        .panel-right .prop-row .prop-group { flex: 1; }
+        .panel-right .no-selection {
+            color: #4a5a6e;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 13px;
+        }
+
+        .code-panel {
+            height: 160px;
+            background: #23272e;
+            border: 1px solid #3a4050;
+            border-top: none;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .code-panel .code-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 12px;
+            background: #2f3644;
+            border-bottom: 1px solid #3a4050;
+            font-size: 12px;
+            color: #8a9bb5;
+            font-family: 'Consolas', monospace;
+            flex-shrink: 0;
+        }
+        .code-panel .code-header .actions .btn {
+            padding: 0 8px;
+            font-size: 11px;
+            border: none;
+            color: #8a9bb5;
+        }
+        .code-panel .code-header .actions .btn:hover { color: #fff; background: transparent; }
+        .code-panel textarea {
+            flex: 1;
+            margin: 0;
+            padding: 8px 12px;
+            background: #14181e;
+            color: #e0e8f0;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            border: none;
+            outline: none;
+            resize: none;
+            overflow: auto;
+            white-space: pre;
+            tab-size: 4;
+        }
+        .code-panel textarea:focus {
+            outline: 1px solid #4a8bf5;
+        }
+
+        @media (max-width: 900px) {
+            .panel-left { width: 100px; }
+            .panel-right { width: 200px; }
+        }
+        @media (max-width: 700px) {
+            .main-area { flex-direction: column; }
+            .panel-left { width: 100%; max-height: 120px; flex-direction: row; flex-wrap: wrap; }
+            .panel-left .ctrl-btn { display: inline-block; width: auto; padding: 4px 10px; }
+            .panel-right { width: 100%; max-height: 200px; }
+            .code-panel { height: 120px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toolbar">
+    <div class="group">
+        <label>设计器</label>
+        <button class="btn btn-secondary" id="clearBtn">清空</button>
+        <button class="btn" id="exportCodeBtn">📋 复制代码</button>
+        <button class="btn btn-primary" id="applyCodeBtn">🔄 应用代码修改</button>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="group">
+        <label style="color:#4a5a6e;">控件数: <span id="widgetCount">0</span></label>
+    </div>
+</div>
+
+<div class="main-area">
+    <div class="panel-left" id="ctrlPanel">
+        <button class="ctrl-btn" data-type="Button">📘 Button</button>
+        <button class="ctrl-btn" data-type="Label">📄 Label</button>
+        <button class="ctrl-btn" data-type="Entry">✏️ Entry</button>
+        <button class="ctrl-btn" data-type="Frame">🔲 Frame</button>
+        <button class="ctrl-btn" data-type="Canvas">🎨 Canvas</button>
+        <button class="ctrl-btn" data-type="Listbox">📋 Listbox</button>
+        <button class="ctrl-btn" data-type="Checkbutton">☑️ Checkbutton</button>
+        <button class="ctrl-btn" data-type="Radiobutton">🔘 Radiobutton</button>
+        <button class="ctrl-btn" data-type="Text">📝 Text</button>
+        <button class="ctrl-btn" data-type="Scale">📊 Scale</button>
+        <button class="ctrl-btn" data-type="Spinbox">🔢 Spinbox</button>
+    </div>
+
+    <div class="canvas-wrapper" id="canvasWrapper">
+        <div class="design-canvas" id="designCanvas"></div>
+    </div>
+
+    <div class="panel-right" id="propsPanel">
+        <div class="no-selection">选中控件以编辑属性</div>
+    </div>
+</div>
+
+<!-- 底部代码面板（可编辑） -->
+<div class="code-panel">
+    <div class="code-header">
+        <span>📄 生成的 Tkinter 代码 (可编辑)</span>
+        <div class="actions">
+            <button class="btn" id="copyCodeBtn">复制</button>
+            <button class="btn" id="downloadCodeBtn">下载 .py</button>
+            <button class="btn btn-primary" id="applyCodeBtn2">应用修改</button>
+        </div>
+    </div>
+    <textarea id="codeDisplay" spellcheck="false"></textarea>
+</div>
+
+<script>
+    (function() {
+        'use strict';
+
+        // ---------- 核心数据 ----------
+        let widgets = [];
+        let selectedId = null;
+        let nextId = 1;
+
+        // 背景属性
+        let bgColor = '#ffffff';
+        let canvasWidth = 800;
+        let canvasHeight = 500;
+        let bgRelief = 'flat';
+        let bgBorderWidth = 0;
+
+        const canvas = document.getElementById('designCanvas');
+        const propsPanel = document.getElementById('propsPanel');
+        const codeDisplay = document.getElementById('codeDisplay');
+        const widgetCount = document.getElementById('widgetCount');
+
+        // ---------- 默认控件属性 ----------
+        const defaultProps = {
+            Button: { w: 80, h: 30, text: 'Button', bg: '#e0e0e0', fg: '#000000', activebg: '#c0c0c0', activefg: '#000000', relief: 'raised', command: '' },
+            Label:  { w: 80, h: 24, text: 'Label', bg: '#f0f0f0', fg: '#000000', relief: 'flat' },
+            Entry:  { w: 120, h: 26, text: '', bg: '#ffffff', fg: '#000000', relief: 'sunken', show: '' },
+            Frame:  { w: 150, h: 100, text: 'Frame', bg: '#e8e8e8', relief: 'raised' },
+            Canvas: { w: 120, h: 80, text: '', bg: '#ffffff', relief: 'sunken' },
+            Listbox:{ w: 120, h: 80, text: '', bg: '#ffffff', fg: '#000000', relief: 'sunken', selectmode: 'single' },
+            Checkbutton: { w: 100, h: 26, text: 'Check', bg: '#f0f0f0', fg: '#000000', selectcolor: '#d0d0d0', command: '' },
+            Radiobutton: { w: 100, h: 26, text: 'Radio', bg: '#f0f0f0', fg: '#000000', selectcolor: '#d0d0d0', command: '', value: '1' },
+            Text:   { w: 120, h: 80, text: '', bg: '#ffffff', fg: '#000000', relief: 'sunken' },
+            Scale:  { w: 120, h: 30, text: '', bg: '#f0f0f0', fg: '#000000', from_: 0, to_: 100, orient: 'horizontal', command: '' },
+            Spinbox:{ w: 100, h: 26, text: '', bg: '#ffffff', fg: '#000000', from_: 0, to_: 100, command: '' }
+        };
+
+        function generateId() { return 'w' + (nextId++); }
+
+        function addWidget(type, x, y) {
+            const def = defaultProps[type];
+            if (!def) return;
+            const widget = {
+                id: generateId(),
+                type: type,
+                x: x !== undefined ? x : 20 + Math.random() * 40,
+                y: y !== undefined ? y : 20 + Math.random() * 40,
+                w: def.w,
+                h: def.h,
+                text: def.text || type,
+                bg: def.bg || '#f0f0f0',
+                fg: def.fg || '#000000',
+                font: 'Arial 10',
+                relief: def.relief || 'flat',
+                command: def.command || '',
+                values: type === 'Listbox' ? ['Item1', 'Item2', 'Item3'] : [],
+                orient: type === 'Scale' ? 'horizontal' : '',
+                from_: type === 'Scale' ? 0 : 0,
+                to_: type === 'Scale' ? 100 : 100,
+                selectcolor: def.selectcolor || '#d0d0d0',
+                activebg: def.activebg || '#c0c0c0',
+                activefg: def.activefg || '#000000',
+                show: def.show || '',
+                selectmode: def.selectmode || 'single',
+                value: def.value || '1',
+                keyEvent: '',
+                bindEvent: '',
+                bindHandler: ''
+            };
+            widgets.push(widget);
+            renderAll();
+            selectWidget(widget.id);
+            updateCode();
+            return widget;
+        }
+
+        function deleteWidget(id) {
+            widgets = widgets.filter(w => w.id !== id);
+            if (selectedId === id) selectedId = null;
+            renderAll();
+            updateCode();
+        }
+
+        function clearAll() {
+            if (widgets.length === 0) return;
+            if (!confirm('确定清空所有控件吗？')) return;
+            widgets = [];
+            selectedId = null;
+            renderAll();
+            updateCode();
+        }
+
+        // ---------- 渲染 ----------
+        function renderAll() {
+            canvas.style.backgroundColor = bgColor;
+            canvas.style.width = canvasWidth + 'px';
+            canvas.style.height = canvasHeight + 'px';
+            // 背景边框
+            canvas.style.borderStyle = bgRelief;
+            canvas.style.borderWidth = bgBorderWidth + 'px';
+            canvas.style.borderColor = bgBorderWidth > 0 ? '#3a4050' : 'transparent';
+
+            canvas.innerHTML = '';
+            widgets.forEach(w => {
+                const el = document.createElement('div');
+                el.className = 'widget' + (w.id === selectedId ? ' selected' : '');
+                el.dataset.id = w.id;
+                el.style.left = w.x + 'px';
+                el.style.top = w.y + 'px';
+                el.style.width = w.w + 'px';
+                el.style.height = w.h + 'px';
+                el.style.backgroundColor = w.bg;
+                el.style.color = w.fg;
+                el.style.font = w.font || 'Arial 10';
+                el.style.borderStyle = w.relief || 'solid';
+                el.textContent = w.text || w.type;
+                if (w.id === selectedId) {
+                    ['nw','n','ne','e','se','s','sw','w'].forEach(d => {
+                        const h = document.createElement('div');
+                        h.className = 'handle ' + d;
+                        el.appendChild(h);
+                    });
+                }
+                el.addEventListener('mousedown', (e) => onWidgetMouseDown(e, w.id));
+                canvas.appendChild(el);
+            });
+            updateWidgetCount();
+            renderProperties();
+        }
+
+        function selectWidget(id) {
+            selectedId = id;
+            renderAll();
+            updateCode();
+        }
+
+        // ---------- 鼠标事件 ----------
+        let dragState = null;
+
+        function onWidgetMouseDown(e, widgetId) {
+            const widget = widgets.find(w => w.id === widgetId);
+            if (!widget) return;
+            if (e.target.classList.contains('handle')) {
+                const dir = e.target.className.split(' ').find(c => c.length <= 2 && c !== 'handle');
+                if (dir) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dragState = {
+                        mode: 'resize',
+                        widgetId: widgetId,
+                        handleDir: dir,
+                        startX: e.clientX,
+                        startY: e.clientY,
+                        origX: widget.x,
+                        origY: widget.y,
+                        origW: widget.w,
+                        origH: widget.h
+                    };
+                    document.addEventListener('mousemove', onMouseMove);
+                    document.addEventListener('mouseup', onMouseUp);
+                    return;
+                }
+            }
+            if (e.button === 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                selectWidget(widgetId);
+                dragState = {
+                    mode: 'move',
+                    widgetId: widgetId,
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    origX: widget.x,
+                    origY: widget.y
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+        }
+
+        function onMouseMove(e) {
+            if (!dragState) return;
+            const widget = widgets.find(w => w.id === dragState.widgetId);
+            if (!widget) return;
+            const dx = e.clientX - dragState.startX;
+            const dy = e.clientY - dragState.startY;
+
+            if (dragState.mode === 'move') {
+                widget.x = Math.max(0, dragState.origX + dx);
+                widget.y = Math.max(0, dragState.origY + dy);
+                renderAll();
+                updateCode();
+            } else if (dragState.mode === 'resize') {
+                const dir = dragState.handleDir;
+                let newX = dragState.origX, newY = dragState.origY;
+                let newW = dragState.origW, newH = dragState.origH;
+                if (dir.includes('e')) newW = Math.max(20, dragState.origW + dx);
+                if (dir.includes('w')) {
+                    const delta = Math.min(dx, dragState.origW - 20);
+                    newX = dragState.origX + delta;
+                    newW = dragState.origW - delta;
+                }
+                if (dir.includes('s')) newH = Math.max(20, dragState.origH + dy);
+                if (dir.includes('n')) {
+                    const delta = Math.min(dy, dragState.origH - 20);
+                    newY = dragState.origY + delta;
+                    newH = dragState.origH - delta;
+                }
+                widget.x = newX;
+                widget.y = newY;
+                widget.w = newW;
+                widget.h = newH;
+                renderAll();
+                updateCode();
+            }
+        }
+
+        function onMouseUp() {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            dragState = null;
+        }
+
+        // ---------- 属性面板 ----------
+        function renderProperties() {
+            let html = `<div class="section"><div class="section-title">🎨 画布背景</div>
+                <div class="prop-group"><label>背景色</label><input type="color" id="bgColorPicker" value="${bgColor}"></div>
+                <div class="prop-row">
+                    <div class="prop-group"><label>宽度</label><input type="number" id="bgWidth" value="${canvasWidth}"></div>
+                    <div class="prop-group"><label>高度</label><input type="number" id="bgHeight" value="${canvasHeight}"></div>
+                </div>
+                <div class="prop-row">
+                    <div class="prop-group"><label>边框样式</label>
+                        <select id="bgRelief">
+                            <option value="flat" ${bgRelief==='flat'?'selected':''}>flat</option>
+                            <option value="raised" ${bgRelief==='raised'?'selected':''}>raised</option>
+                            <option value="sunken" ${bgRelief==='sunken'?'selected':''}>sunken</option>
+                            <option value="ridge" ${bgRelief==='ridge'?'selected':''}>ridge</option>
+                            <option value="solid" ${bgRelief==='solid'?'selected':''}>solid</option>
+                        </select>
+                    </div>
+                    <div class="prop-group"><label>边框宽度</label><input type="number" id="bgBorderWidth" value="${bgBorderWidth}" min="0"></div>
+                </div>
+            </div>`;
+
+            if (selectedId) {
+                const w = widgets.find(w => w.id === selectedId);
+                if (w) {
+                    html += `<div class="section"><div class="section-title">🧩 控件属性 (${w.type})</div>`;
+                    html += `<div class="prop-row"><div class="prop-group"><label>X</label><input type="number" id="propX" value="${w.x}"></div>
+                             <div class="prop-group"><label>Y</label><input type="number" id="propY" value="${w.y}"></div></div>`;
+                    html += `<div class="prop-row"><div class="prop-group"><label>W</label><input type="number" id="propW" value="${w.w}"></div>
+                             <div class="prop-group"><label>H</label><input type="number" id="propH" value="${w.h}"></div></div>`;
+                    html += `<div class="prop-group"><label>文本</label><input type="text" id="propText" value="${w.text || ''}"></div>`;
+                    html += `<div class="prop-group"><label>背景色</label><input type="color" id="propBg" value="${w.bg}"></div>`;
+                    html += `<div class="prop-group"><label>前景色</label><input type="color" id="propFg" value="${w.fg}"></div>`;
+                    html += `<div class="prop-group"><label>字体</label><input type="text" id="propFont" value="${w.font || 'Arial 10'}"></div>`;
+                    html += `<div class="prop-group"><label>边框样式</label><select id="propRelief">
+                                <option value="flat" ${w.relief==='flat'?'selected':''}>flat</option>
+                                <option value="raised" ${w.relief==='raised'?'selected':''}>raised</option>
+                                <option value="sunken" ${w.relief==='sunken'?'selected':''}>sunken</option>
+                                <option value="ridge" ${w.relief==='ridge'?'selected':''}>ridge</option>
+                                <option value="solid" ${w.relief==='solid'?'selected':''}>solid</option>
+                            </select></div>`;
+
+                    if (w.type === 'Button') {
+                        html += `<div class="prop-group"><label>激活背景色</label><input type="color" id="propActiveBg" value="${w.activebg || '#c0c0c0'}"></div>`;
+                        html += `<div class="prop-group"><label>激活前景色</label><input type="color" id="propActiveFg" value="${w.activefg || '#000000'}"></div>`;
+                        html += `<div class="prop-group"><label>事件: command (点击)</label><input type="text" id="propCommand" value="${w.command || ''}" placeholder="函数名"></div>`;
+                    }
+                    if (w.type === 'Checkbutton' || w.type === 'Radiobutton') {
+                        html += `<div class="prop-group"><label>选择色</label><input type="color" id="propSelectColor" value="${w.selectcolor || '#d0d0d0'}"></div>`;
+                        html += `<div class="prop-group"><label>事件: command (点击)</label><input type="text" id="propCommand" value="${w.command || ''}" placeholder="函数名"></div>`;
+                        if (w.type === 'Radiobutton') {
+                            html += `<div class="prop-group"><label>value</label><input type="text" id="propValue" value="${w.value || '1'}"></div>`;
+                        }
+                    }
+                    if (w.type === 'Entry') {
+                        html += `<div class="prop-group"><label>显示字符 (show)</label><input type="text" id="propShow" value="${w.show || ''}" placeholder="如 *"></div>`;
+                        html += `<div class="prop-group"><label>事件: KeyPress</label><input type="text" id="propKeyEvent" value="${w.keyEvent || ''}" placeholder="函数名"></div>`;
+                    }
+                    if (w.type === 'Listbox') {
+                        html += `<div class="prop-group"><label>列表项 (逗号分隔)</label><input type="text" id="propValues" value="${(w.values || []).join(',')}"></div>`;
+                        html += `<div class="prop-group"><label>选择模式</label><select id="propSelectMode">
+                                    <option value="single" ${w.selectmode==='single'?'selected':''}>single</option>
+                                    <option value="browse" ${w.selectmode==='browse'?'selected':''}>browse</option>
+                                    <option value="multiple" ${w.selectmode==='multiple'?'selected':''}>multiple</option>
+                                    <option value="extended" ${w.selectmode==='extended'?'selected':''}>extended</option>
+                                </select></div>`;
+                    }
+                    if (w.type === 'Scale') {
+                        html += `<div class="prop-row"><div class="prop-group"><label>From</label><input type="number" id="propFrom" value="${w.from_ || 0}"></div>
+                                 <div class="prop-group"><label>To</label><input type="number" id="propTo" value="${w.to_ || 100}"></div></div>`;
+                        html += `<div class="prop-group"><label>方向</label><select id="propOrient">
+                                    <option value="horizontal" ${w.orient==='horizontal'?'selected':''}>水平</option>
+                                    <option value="vertical" ${w.orient==='vertical'?'selected':''}>垂直</option>
+                                </select></div>`;
+                        html += `<div class="prop-group"><label>事件: command (拖动)</label><input type="text" id="propCommand" value="${w.command || ''}" placeholder="函数名"></div>`;
+                    }
+                    if (w.type === 'Spinbox') {
+                        html += `<div class="prop-group"><label>事件: command (改变)</label><input type="text" id="propCommand" value="${w.command || ''}" placeholder="函数名"></div>`;
+                    }
+                    html += `<div class="prop-group"><label>通用绑定事件</label>
+                                <select id="propBindEvent">
+                                    <option value="">无</option>
+                                    <option value="<Button-1>" ${w.bindEvent==='<Button-1>'?'selected':''}>鼠标单击</option>
+                                    <option value="<Double-Button-1>" ${w.bindEvent==='<Double-Button-1>'?'selected':''}>鼠标双击</option>
+                                    <option value="<Enter>" ${w.bindEvent==='<Enter>'?'selected':''}>鼠标进入</option>
+                                    <option value="<Leave>" ${w.bindEvent==='<Leave>'?'selected':''}>鼠标离开</option>
+                                    <option value="<KeyPress>" ${w.bindEvent==='<KeyPress>'?'selected':''}>键盘按下</option>
+                                </select>
+                                <input type="text" id="propBindHandler" value="${w.bindHandler || ''}" placeholder="处理函数名" style="margin-top:4px;">
+                            </div>`;
+                    html += `<div style="margin-top:8px;"><button class="btn btn-danger" id="deleteBtn">删除控件</button></div>`;
+                    html += `</div>`;
+                }
+            } else {
+                html += `<div class="no-selection">选中控件以编辑属性</div>`;
+            }
+            propsPanel.innerHTML = html;
+
+            // 背景事件
+            document.getElementById('bgColorPicker')?.addEventListener('change', function() {
+                bgColor = this.value;
+                renderAll();
+                updateCode();
+            });
+            document.getElementById('bgWidth')?.addEventListener('change', function() {
+                const val = parseInt(this.value);
+                if (!isNaN(val) && val > 100) { canvasWidth = val; renderAll(); updateCode(); }
+            });
+            document.getElementById('bgHeight')?.addEventListener('change', function() {
+                const val = parseInt(this.value);
+                if (!isNaN(val) && val > 100) { canvasHeight = val; renderAll(); updateCode(); }
+            });
+            document.getElementById('bgRelief')?.addEventListener('change', function() {
+                bgRelief = this.value;
+                renderAll();
+                updateCode();
+            });
+            document.getElementById('bgBorderWidth')?.addEventListener('change', function() {
+                const val = parseInt(this.value);
+                if (!isNaN(val) && val >= 0) { bgBorderWidth = val; renderAll(); updateCode(); }
+            });
+
+            if (!selectedId) return;
+            const w = widgets.find(w => w.id === selectedId);
+            if (!w) return;
+
+            const bind = (id, callback) => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', callback);
+            };
+            bind('propX', () => { const val = parseInt(document.getElementById('propX').value); if (!isNaN(val)) { w.x = val; renderAll(); updateCode(); } });
+            bind('propY', () => { const val = parseInt(document.getElementById('propY').value); if (!isNaN(val)) { w.y = val; renderAll(); updateCode(); } });
+            bind('propW', () => { const val = parseInt(document.getElementById('propW').value); if (!isNaN(val) && val > 0) { w.w = val; renderAll(); updateCode(); } });
+            bind('propH', () => { const val = parseInt(document.getElementById('propH').value); if (!isNaN(val) && val > 0) { w.h = val; renderAll(); updateCode(); } });
+            bind('propText', () => { w.text = document.getElementById('propText').value; renderAll(); updateCode(); });
+            bind('propBg', () => { w.bg = document.getElementById('propBg').value; renderAll(); updateCode(); });
+            bind('propFg', () => { w.fg = document.getElementById('propFg').value; renderAll(); updateCode(); });
+            bind('propFont', () => { w.font = document.getElementById('propFont').value; renderAll(); updateCode(); });
+            bind('propRelief', () => { w.relief = document.getElementById('propRelief').value; renderAll(); updateCode(); });
+
+            if (w.type === 'Button' || w.type === 'Checkbutton' || w.type === 'Radiobutton' || w.type === 'Scale' || w.type === 'Spinbox') {
+                bind('propCommand', () => { w.command = document.getElementById('propCommand').value; updateCode(); });
+            }
+            if (w.type === 'Button') {
+                bind('propActiveBg', () => { w.activebg = document.getElementById('propActiveBg').value; updateCode(); });
+                bind('propActiveFg', () => { w.activefg = document.getElementById('propActiveFg').value; updateCode(); });
+            }
+            if (w.type === 'Checkbutton' || w.type === 'Radiobutton') {
+                bind('propSelectColor', () => { w.selectcolor = document.getElementById('propSelectColor').value; updateCode(); });
+                if (w.type === 'Radiobutton') {
+                    bind('propValue', () => { w.value = document.getElementById('propValue').value; updateCode(); });
+                }
+            }
+            if (w.type === 'Entry') {
+                bind('propShow', () => { w.show = document.getElementById('propShow').value; updateCode(); });
+                bind('propKeyEvent', () => { w.keyEvent = document.getElementById('propKeyEvent').value; updateCode(); });
+            }
+            if (w.type === 'Listbox') {
+                bind('propValues', () => {
+                    const val = document.getElementById('propValues').value;
+                    w.values = val.split(',').map(s => s.trim()).filter(s => s);
+                    renderAll();
+                    updateCode();
+                });
+                bind('propSelectMode', () => { w.selectmode = document.getElementById('propSelectMode').value; updateCode(); });
+            }
+            if (w.type === 'Scale') {
+                bind('propFrom', () => { const val = parseInt(document.getElementById('propFrom').value); if (!isNaN(val)) { w.from_ = val; updateCode(); } });
+                bind('propTo', () => { const val = parseInt(document.getElementById('propTo').value); if (!isNaN(val)) { w.to_ = val; updateCode(); } });
+                bind('propOrient', () => { w.orient = document.getElementById('propOrient').value; updateCode(); });
+            }
+            bind('propBindEvent', () => { w.bindEvent = document.getElementById('propBindEvent').value; updateCode(); });
+            bind('propBindHandler', () => { w.bindHandler = document.getElementById('propBindHandler').value; updateCode(); });
+
+            document.getElementById('deleteBtn')?.addEventListener('click', () => { deleteWidget(w.id); });
+        }
+
+        // ---------- 代码生成 ----------
+        function generateCode() {
+            let lines = [];
+            lines.push('import tkinter as tk');
+            lines.push('');
+            lines.push('root = tk.Tk()');
+            lines.push(`root.title("Nexabox Design")`);
+            lines.push(`root.geometry("${canvasWidth}x${canvasHeight}")`);
+            // 背景配置（包含边框）
+            lines.push(`root.configure(bg="${bgColor}", relief="${bgRelief}", bd=${bgBorderWidth})`);
+            lines.push('');
+
+            const eventCallbacks = new Set();
+            widgets.forEach(w => {
+                if (w.command) eventCallbacks.add(w.command);
+                if (w.keyEvent) eventCallbacks.add(w.keyEvent);
+                if (w.bindHandler) eventCallbacks.add(w.bindHandler);
+            });
+            eventCallbacks.forEach(fn => {
+                lines.push(`def ${fn}(event=None):`);
+                lines.push(`    # TODO: 实现 ${fn} 的逻辑`);
+                lines.push(`    pass`);
+                lines.push('');
+            });
+
+            widgets.forEach(w => {
+                const varName = 'w' + w.id;
+                let create = '';
+                let config = '';
+                const x = w.x, y = w.y, width = w.w, height = w.h;
+                switch (w.type) {
+                    case 'Button':
+                        create = `tk.Button(root, text="${w.text || 'Button'}", bg="${w.bg}", fg="${w.fg}", activebackground="${w.activebg || '#c0c0c0'}", activeforeground="${w.activefg || '#000000'}", relief="${w.relief || 'raised'}"`;
+                        if (w.command) create += `, command=${w.command}`;
+                        create += `)`;
+                        break;
+                    case 'Label':
+                        create = `tk.Label(root, text="${w.text || 'Label'}", bg="${w.bg}", fg="${w.fg}", relief="${w.relief || 'flat'}")`;
+                        break;
+                    case 'Entry':
+                        create = `tk.Entry(root, bg="${w.bg}", fg="${w.fg}", relief="${w.relief || 'sunken'}"`;
+                        if (w.show) create += `, show="${w.show}"`;
+                        if (w.keyEvent) create += `, validate="key", validatecommand=(${w.keyEvent}, '%P')`;
+                        create += `)`;
+                        break;
+                    case 'Frame':
+                        create = `tk.Frame(root, bg="${w.bg}", relief="${w.relief || 'raised'}")`;
+                        break;
+                    case 'Canvas':
+                        create = `tk.Canvas(root, bg="${w.bg}", relief="${w.relief || 'sunken'}")`;
+                        break;
+                    case 'Listbox':
+                        create = `tk.Listbox(root, bg="${w.bg}", fg="${w.fg}", relief="${w.relief || 'sunken'}", selectmode="${w.selectmode || 'single'}")`;
+                        if (w.values) {
+                            config += `\nfor item in ${JSON.stringify(w.values)}:\n    ${varName}.insert(tk.END, item)`;
+                        }
+                        break;
+                    case 'Checkbutton':
+                        create = `tk.Checkbutton(root, text="${w.text || 'Check'}", bg="${w.bg}", fg="${w.fg}", selectcolor="${w.selectcolor || '#d0d0d0'}", relief="${w.relief || 'flat'}"`;
+                        if (w.command) create += `, command=${w.command}`;
+                        create += `)`;
+                        break;
+                    case 'Radiobutton':
+                        create = `tk.Radiobutton(root, text="${w.text || 'Radio'}", bg="${w.bg}", fg="${w.fg}", selectcolor="${w.selectcolor || '#d0d0d0'}", value="${w.value || '1'}", relief="${w.relief || 'flat'}"`;
+                        if (w.command) create += `, command=${w.command}`;
+                        create += `)`;
+                        break;
+                    case 'Text':
+                        create = `tk.Text(root, bg="${w.bg}", fg="${w.fg}", relief="${w.relief || 'sunken'}")`;
+                        break;
+                    case 'Scale':
+                        const orient = w.orient === 'vertical' ? 'tk.VERTICAL' : 'tk.HORIZONTAL';
+                        create = `tk.Scale(root, from_=${w.from_ || 0}, to=${w.to_ || 100}, orient=${orient}, bg="${w.bg}", fg="${w.fg}"`;
+                        if (w.command) create += `, command=${w.command}`;
+                        create += `)`;
+                        break;
+                    case 'Spinbox':
+                        create = `tk.Spinbox(root, from_=${w.from_ || 0}, to=${w.to_ || 100}, bg="${w.bg}", fg="${w.fg}", relief="${w.relief || 'sunken'}"`;
+                        if (w.command) create += `, command=${w.command}`;
+                        create += `)`;
+                        break;
+                    default:
+                        create = `tk.Frame(root, bg="${w.bg}", relief="${w.relief || 'flat'}")`;
+                }
+                lines.push(`${varName} = ${create}`);
+                if (config) lines.push(config);
+                if (w.bindEvent && w.bindHandler) {
+                    lines.push(`${varName}.bind("${w.bindEvent}", ${w.bindHandler})`);
+                }
+                lines.push(`${varName}.place(x=${x}, y=${y}, width=${width}, height=${height})`);
+                lines.push('');
+            });
+            lines.push('root.mainloop()');
+            return lines.join('\n');
+        }
+
+        function updateCode() {
+            codeDisplay.value = generateCode();
+        }
+
+        // ---------- 应用代码修改 ----------
+        function applyCodeChanges() {
+            // 简单提示：代码修改需要重新加载设计器，目前只做提示
+            alert('代码修改已保存到编辑器。要同步到设计器，请使用"应用修改"功能。');
+            // 实际可解析代码并重建 widgets（较复杂，作为后续增强）
+        }
+
+        // ---------- 导出/复制 ----------
+        function copyCode() {
+            navigator.clipboard.writeText(codeDisplay.value).then(() => alert('代码已复制')).catch(() => alert('复制失败'));
+        }
+
+        function downloadCode() {
+            const blob = new Blob([codeDisplay.value], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'design.py';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function updateWidgetCount() {
+            widgetCount.textContent = widgets.length;
+        }
+
+        // ---------- 事件绑定 ----------
+        document.querySelectorAll('.ctrl-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                addWidget(btn.dataset.type);
+            });
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', clearAll);
+        document.getElementById('copyCodeBtn').addEventListener('click', copyCode);
+        document.getElementById('exportCodeBtn').addEventListener('click', copyCode);
+        document.getElementById('downloadCodeBtn').addEventListener('click', downloadCode);
+        document.getElementById('applyCodeBtn').addEventListener('click', applyCodeChanges);
+        document.getElementById('applyCodeBtn2').addEventListener('click', applyCodeChanges);
+
+        // ---------- 初始化 ----------
+        addWidget('Button', 30, 30);
+        addWidget('Label', 150, 30);
+        addWidget('Entry', 280, 30);
+        updateCode();
+        selectWidget(widgets[0].id);
+
+        console.log('✅ UI Designer 增强版已加载 (背景边框 + 可编辑代码)');
+    })();
+</script>
+</body>
+</html>

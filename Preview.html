@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文档预览器 · Nexabox</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/marked/marked.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: #1a1d23;
+            font-family: 'Segoe UI', 'Roboto', 'Consolas', monospace;
+            color: #e0e8f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            overflow: hidden;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 16px;
+            padding: 8px 16px;
+            background: #23272e;
+            border: 1px solid #3a4050;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        .toolbar .group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn {
+            background: transparent;
+            border: 1px solid #4a8bf5;
+            color: #4a8bf5;
+            padding: 4px 14px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn:hover { background: #4a8bf5; color: #14181e; }
+        .btn.active { background: #4a8bf5; color: #14181e; }
+        .btn-secondary { border-color: #3a4050; color: #8a9bb5; }
+        .btn-secondary:hover { background: #2f3644; color: #e0e8f0; }
+
+        .main-area {
+            flex: 1;
+            display: flex;
+            gap: 10px;
+            min-height: 0;
+        }
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .editor-panel textarea {
+            flex: 1;
+            background: #14181e;
+            border: 1px solid #2f3644;
+            color: #e0e8f0;
+            font-family: 'Consolas', monospace;
+            font-size: 14px;
+            padding: 12px;
+            resize: none;
+            outline: none;
+            tab-size: 2;
+        }
+        .editor-panel textarea:focus {
+            border-color: #4a8bf5;
+        }
+        .preview-panel {
+            flex: 1;
+            background: #ffffff;
+            border: 1px solid #2f3644;
+            overflow: auto;
+            position: relative;
+            min-width: 0;
+        }
+        .preview-panel iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #ffffff;
+        }
+        .preview-panel .placeholder {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            color: #4a5a6e;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 16px;
+            background: #23272e;
+            border: 1px solid #3a4050;
+            border-top: none;
+            font-size: 12px;
+            color: #4a5a6e;
+            font-family: 'Consolas', monospace;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 700px) {
+            .main-area { flex-direction: column; }
+            .editor-panel { flex: 1; min-height: 200px; }
+            .preview-panel { flex: 1; min-height: 200px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toolbar">
+    <div class="group">
+        <button class="btn active" id="modeHtml" data-mode="html">HTML</button>
+        <button class="btn" id="modeMd" data-mode="md">Markdown</button>
+    </div>
+    <div class="group">
+        <button class="btn btn-secondary" id="autoMode">自动检测</button>
+        <button class="btn btn-secondary" id="loadFileBtn">📂 加载文件</button>
+        <button class="btn btn-secondary" id="clearBtn">清空</button>
+    </div>
+    <div style="flex:1;"></div>
+    <div class="group">
+        <span style="font-size:12px; color:#4a5a6e;">模式: <span id="modeDisplay">HTML</span></span>
+    </div>
+</div>
+
+<div class="main-area">
+    <div class="editor-panel">
+        <textarea id="sourceInput" placeholder="在此粘贴 HTML 或 Markdown 内容..."></textarea>
+    </div>
+    <div class="preview-panel">
+        <iframe id="previewFrame" sandbox="allow-scripts allow-modals allow-same-origin"></iframe>
+        <div class="placeholder" id="placeholder">输入内容后自动预览</div>
+    </div>
+</div>
+
+<div class="status-bar">
+    <span id="charCount">字符: 0</span>
+    <span id="lineCount">行: 0</span>
+</div>
+
+<script>
+    (function() {
+        const sourceInput = document.getElementById('sourceInput');
+        const previewFrame = document.getElementById('previewFrame');
+        const placeholder = document.getElementById('placeholder');
+        const modeDisplay = document.getElementById('modeDisplay');
+        const charCount = document.getElementById('charCount');
+        const lineCount = document.getElementById('lineCount');
+
+        let currentMode = 'html'; // 'html' | 'md'
+        let autoDetect = false;
+
+        // 渲染预览
+        function renderPreview() {
+            const content = sourceInput.value;
+            const mode = autoDetect ? detectMode(content) : currentMode;
+
+            if (!content.trim()) {
+                previewFrame.style.display = 'none';
+                placeholder.style.display = 'flex';
+                return;
+            }
+            previewFrame.style.display = 'block';
+            placeholder.style.display = 'none';
+
+            let htmlContent = '';
+            if (mode === 'md') {
+                try {
+                    htmlContent = marked.parse(content);
+                } catch (e) {
+                    htmlContent = `<pre style="color:red;">Markdown 解析错误: ${e.message}</pre>`;
+                }
+            } else {
+                htmlContent = content;
+            }
+
+            // 写入 iframe
+            const doc = previewFrame.contentDocument || previewFrame.contentWindow?.document;
+            if (doc) {
+                doc.open();
+                doc.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head><meta charset="UTF-8"><base target="_blank"></head>
+                    <body style="margin:16px; font-family:system-ui; line-height:1.6; background:#fff; color:#000;">
+                        ${htmlContent}
+                    </body>
+                    </html>
+                `);
+                doc.close();
+            }
+
+            modeDisplay.textContent = mode.toUpperCase();
+            // 更新计数
+            charCount.textContent = `字符: ${content.length}`;
+            lineCount.textContent = `行: ${content.split('\n').length}`;
+        }
+
+        // 自动检测模式（根据内容特征）
+        function detectMode(content) {
+            // 如果包含 Markdown 特征（如 #, *, >, ```, 链接等），判定为 md
+            const mdPatterns = /^#|^>|^[-*+]\s|```|\[.*\]\(.*\)/m;
+            if (mdPatterns.test(content)) return 'md';
+            // 否则判定为 HTML（包含 <html>, <body>, <div>, <p> 等）
+            if (/<html|<body|<div|<p|<br|<h[1-6]/i.test(content)) return 'html';
+            // 默认 HTML
+            return 'html';
+        }
+
+        // ---------- 事件绑定 ----------
+        sourceInput.addEventListener('input', renderPreview);
+
+        // 模式切换
+        document.getElementById('modeHtml').addEventListener('click', function() {
+            autoDetect = false;
+            document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentMode = 'html';
+            renderPreview();
+        });
+        document.getElementById('modeMd').addEventListener('click', function() {
+            autoDetect = false;
+            document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentMode = 'md';
+            renderPreview();
+        });
+        document.getElementById('autoMode').addEventListener('click', function() {
+            autoDetect = !autoDetect;
+            this.classList.toggle('active');
+            renderPreview();
+        });
+        // 默认激活 HTML
+        document.getElementById('modeHtml').classList.add('active');
+
+        // 加载文件
+        document.getElementById('loadFileBtn').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.html,.htm,.md,.markdown,.txt';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    sourceInput.value = ev.target.result;
+                    // 根据扩展名自动切换模式
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (ext === 'md' || ext === 'markdown') {
+                        document.getElementById('modeMd').click();
+                    } else {
+                        document.getElementById('modeHtml').click();
+                    }
+                    renderPreview();
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        // 清空
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            sourceInput.value = '';
+            renderPreview();
+        });
+
+        // 初始渲染
+        renderPreview();
+
+        // 加载示例（首次使用提示）
+        const sample = `# 欢迎使用预览器
+
+你可以在这里粘贴 **HTML** 或 **Markdown** 内容，实时预览渲染效果。
+
+## 支持特性
+- ✅ HTML 实时渲染（iframe 沙箱隔离）
+- ✅ Markdown 渲染（使用 marked.js）
+- ✅ 自动检测模式
+- ✅ 文件加载
+
+试试下面这段 HTML：
+\`\`\`html
+<div style="background:#e8f0fe; padding:20px; border-radius:8px;">
+  <h3>Hello Nexabox!</h3>
+  <p>这是一个预览示例。</p>
+</div>
+\`\`\`
+`;
+        sourceInput.value = sample;
+        renderPreview();
+
+        console.log('✅ Preview 预览器已加载');
+    })();
+</script>
+</body>
+</html>

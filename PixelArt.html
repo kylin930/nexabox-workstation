@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>像素画编辑器 · Nexabox</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background: #1a1d23;
+            font-family: 'Segoe UI', 'Roboto', 'Consolas', monospace;
+            color: #e0e8f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 12px;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 16px;
+            padding: 8px 16px;
+            background: #23272e;
+            border: 1px solid #3a4050;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        .toolbar .group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .toolbar .group label {
+            font-size: 12px;
+            color: #8a9bb5;
+            font-family: 'Consolas', monospace;
+            letter-spacing: 0.3px;
+        }
+        .toolbar .group input[type="number"] {
+            width: 54px;
+            padding: 4px 6px;
+            background: #14181e;
+            border: 1px solid #3a4050;
+            color: #e0e8f0;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            outline: none;
+        }
+        .toolbar .group input[type="number"]:focus {
+            border-color: #4a8bf5;
+        }
+        .toolbar .group input[type="color"] {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #3a4050;
+            padding: 2px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .btn {
+            background: transparent;
+            border: 1px solid #4a8bf5;
+            color: #4a8bf5;
+            padding: 4px 14px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn:hover { background: #4a8bf5; color: #14181e; }
+        .btn.active { background: #4a8bf5; color: #14181e; }
+        .btn-secondary { border-color: #3a4050; color: #8a9bb5; }
+        .btn-secondary:hover { background: #2f3644; color: #e0e8f0; }
+        .btn-danger { border-color: #e74c3c; color: #e74c3c; }
+        .btn-danger:hover { background: #e74c3c; color: #14181e; }
+
+        .canvas-wrapper {
+            flex: 1;
+            background: #14181e;
+            border: 1px solid #2f3644;
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+        }
+        .canvas-wrapper canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+        .canvas-wrapper canvas:active { cursor: grabbing; }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 16px;
+            background: #23272e;
+            border: 1px solid #3a4050;
+            border-top: none;
+            font-size: 12px;
+            color: #4a5a6e;
+            font-family: 'Consolas', monospace;
+            flex-shrink: 0;
+        }
+
+        .palette {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .palette .swatch {
+            width: 24px;
+            height: 24px;
+            border: 1px solid #3a4050;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .palette .swatch:hover { border-color: #4a8bf5; }
+        .palette .swatch.active { border-color: #fff; box-shadow: 0 0 0 1px #fff; }
+
+        @media (max-width: 600px) {
+            .toolbar { gap: 6px; padding: 6px 10px; }
+            .toolbar .group { flex-wrap: wrap; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="toolbar">
+    <div class="group">
+        <label>画布</label>
+        <input type="number" id="canvasWidth" value="64" min="8" max="512" step="8">
+        <span style="color:#4a5a6e;">×</span>
+        <input type="number" id="canvasHeight" value="64" min="8" max="512" step="8">
+        <button class="btn" id="resizeBtn">调整</button>
+    </div>
+
+    <div class="group">
+        <button class="btn active" data-tool="pencil">✏️</button>
+        <button class="btn" data-tool="eraser">🧹</button>
+        <button class="btn" data-tool="fill">🪣</button>
+        <button class="btn" data-tool="picker">🧴</button>
+    </div>
+
+    <div class="group">
+        <label>颜色</label>
+        <input type="color" id="colorPicker" value="#ffffff">
+    </div>
+
+    <div class="group" style="flex:1; min-width:120px;">
+        <div class="palette" id="palette"></div>
+    </div>
+
+    <div class="group">
+        <label>缩放</label>
+        <input type="range" id="zoomSlider" min="0.5" max="40" step="0.5" value="10" style="width:100px;">
+        <span id="zoomDisplay">10x</span>
+    </div>
+
+    <div class="group">
+        <button class="btn btn-secondary" id="toggleGrid">网格</button>
+        <button class="btn btn-secondary" id="clearBtn">清空</button>
+        <button class="btn" id="exportBtn">导出 PNG</button>
+    </div>
+</div>
+
+<div class="canvas-wrapper" id="canvasWrapper">
+    <canvas id="displayCanvas"></canvas>
+</div>
+
+<div class="status-bar">
+    <span id="coordDisplay">(0, 0)</span>
+    <span id="sizeDisplay">64×64</span>
+</div>
+
+<script>
+    (function() {
+        // ---------- 核心状态 ----------
+        let canvasWidth = 64;
+        let canvasHeight = 64;
+        let scale = 10;                 // 每个逻辑像素对应的屏幕像素数
+        let viewX = 0, viewY = 0;      // 视口左上角在逻辑画布中的坐标（逻辑像素）
+        let currentTool = 'pencil';
+        let currentColor = '#ffffff';
+        let showGrid = true;
+
+        // DOM 元素
+        const displayCanvas = document.getElementById('displayCanvas');
+        const ctx = displayCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+
+        const wrapper = document.getElementById('canvasWrapper');
+        const zoomSlider = document.getElementById('zoomSlider');
+        const zoomDisplay = document.getElementById('zoomDisplay');
+        const coordDisplay = document.getElementById('coordDisplay');
+        const sizeDisplay = document.getElementById('sizeDisplay');
+        const colorPicker = document.getElementById('colorPicker');
+        const paletteContainer = document.getElementById('palette');
+
+        // 离屏 canvas (存储像素数据)
+        const offscreen = document.createElement('canvas');
+        let offCtx = offscreen.getContext('2d');
+        offCtx.imageSmoothingEnabled = false;
+
+        // ---------- 预设调色板 ----------
+        const presetColors = [
+            '#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff',
+            '#ffff00', '#ff00ff', '#00ffff', '#ff8800', '#88ff00',
+            '#ff0088', '#0088ff', '#888888', '#444444', '#cccccc'
+        ];
+
+        // ---------- 初始化画布 ----------
+        function resizeCanvas(w, h) {
+            canvasWidth = Math.min(512, Math.max(8, w));
+            canvasHeight = Math.min(512, Math.max(8, h));
+            offscreen.width = canvasWidth;
+            offscreen.height = canvasHeight;
+            offCtx = offscreen.getContext('2d');
+            offCtx.imageSmoothingEnabled = false;
+            // 填充透明背景（或白色）
+            offCtx.fillStyle = '#000000';
+            offCtx.fillRect(0, 0, canvasWidth, canvasHeight);
+            // 更新显示
+            sizeDisplay.textContent = `${canvasWidth}×${canvasHeight}`;
+            render();
+        }
+
+        // ---------- 渲染主canvas ----------
+        function render() {
+            const rect = wrapper.getBoundingClientRect();
+            const w = rect.width;
+            const h = rect.height;
+            displayCanvas.width = w;
+            displayCanvas.height = h;
+            ctx.imageSmoothingEnabled = false;
+
+            // 清空
+            ctx.fillStyle = '#1a1d23';
+            ctx.fillRect(0, 0, w, h);
+
+            // 计算显示区域
+            const pixelSize = scale;
+            // 视口左上角对应的逻辑坐标
+            const startX = viewX;
+            const startY = viewY;
+            // 显示多少个逻辑像素
+            const pixelW = w / pixelSize;
+            const pixelH = h / pixelSize;
+
+            // 从离屏canvas中截取对应区域绘制
+            // 注意：drawImage的源区域不能超出画布
+            const srcX = Math.max(0, startX);
+            const srcY = Math.max(0, startY);
+            const srcW = Math.min(canvasWidth - srcX, pixelW);
+            const srcH = Math.min(canvasHeight - srcY, pixelH);
+
+            if (srcW > 0 && srcH > 0) {
+                // 计算目标位置（偏移）
+                const destX = (srcX - startX) * pixelSize;
+                const destY = (srcY - startY) * pixelSize;
+                // 绘制
+                ctx.drawImage(offscreen, srcX, srcY, srcW, srcH, destX, destY, srcW * pixelSize, srcH * pixelSize);
+            }
+
+            // 绘制网格
+            if (showGrid && scale >= 3) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+                ctx.lineWidth = 0.5;
+                // 计算需要绘制的网格线范围
+                const startCol = Math.floor(startX);
+                const endCol = Math.ceil(startX + pixelW);
+                const startRow = Math.floor(startY);
+                const endRow = Math.ceil(startY + pixelH);
+                for (let x = startCol; x <= endCol; x++) {
+                    const screenX = (x - startX) * pixelSize;
+                    ctx.beginPath();
+                    ctx.moveTo(screenX, 0);
+                    ctx.lineTo(screenX, h);
+                    ctx.stroke();
+                }
+                for (let y = startRow; y <= endRow; y++) {
+                    const screenY = (y - startY) * pixelSize;
+                    ctx.beginPath();
+                    ctx.moveTo(0, screenY);
+                    ctx.lineTo(w, screenY);
+                    ctx.stroke();
+                }
+            }
+
+            // 更新坐标显示
+            const midX = viewX + pixelW/2;
+            const midY = viewY + pixelH/2;
+            coordDisplay.textContent = `中心 (${Math.round(midX)}, ${Math.round(midY)}) 缩放 ${scale.toFixed(1)}x`;
+        }
+
+        // ---------- 工具函数：坐标转换 ----------
+        function getLogicalCoord(event) {
+            const rect = displayCanvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            const logicalX = viewX + x / scale;
+            const logicalY = viewY + y / scale;
+            return { x: Math.floor(logicalX), y: Math.floor(logicalY) };
+        }
+
+        // ---------- 绘制操作 ----------
+        function setPixel(logicalX, logicalY, color) {
+            if (logicalX < 0 || logicalX >= canvasWidth || logicalY < 0 || logicalY >= canvasHeight) return;
+            offCtx.fillStyle = color;
+            offCtx.fillRect(logicalX, logicalY, 1, 1);
+            render();
+        }
+
+        function getPixel(logicalX, logicalY) {
+            if (logicalX < 0 || logicalX >= canvasWidth || logicalY < 0 || logicalY >= canvasHeight) return null;
+            const imageData = offCtx.getImageData(logicalX, logicalY, 1, 1);
+            const data = imageData.data;
+            return `rgb(${data[0]},${data[1]},${data[2]})`;
+        }
+
+        function floodFill(logicalX, logicalY, fillColor) {
+            if (logicalX < 0 || logicalX >= canvasWidth || logicalY < 0 || logicalY >= canvasHeight) return;
+            const targetColor = getPixel(logicalX, logicalY);
+            if (targetColor === fillColor) return;
+            const imageData = offCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+            const data = imageData.data;
+            const w = canvasWidth;
+            const h = canvasHeight;
+            const targetR = parseInt(targetColor.match(/\d+/g)[0]);
+            const targetG = parseInt(targetColor.match(/\d+/g)[1]);
+            const targetB = parseInt(targetColor.match(/\d+/g)[2]);
+            const fillR = parseInt(fillColor.match(/\d+/g)[0]);
+            const fillG = parseInt(fillColor.match(/\d+/g)[1]);
+            const fillB = parseInt(fillColor.match(/\d+/g)[2]);
+            const stack = [[logicalX, logicalY]];
+            const visited = new Set();
+            while (stack.length > 0) {
+                const [cx, cy] = stack.pop();
+                const key = cx + ',' + cy;
+                if (visited.has(key)) continue;
+                visited.add(key);
+                const idx = (cy * w + cx) * 4;
+                if (data[idx] === targetR && data[idx+1] === targetG && data[idx+2] === targetB) {
+                    data[idx] = fillR; data[idx+1] = fillG; data[idx+2] = fillB;
+                    // 四个方向
+                    if (cx > 0) stack.push([cx-1, cy]);
+                    if (cx < w-1) stack.push([cx+1, cy]);
+                    if (cy > 0) stack.push([cx, cy-1]);
+                    if (cy < h-1) stack.push([cx, cy+1]);
+                }
+            }
+            offCtx.putImageData(imageData, 0, 0);
+            render();
+        }
+
+        // ---------- 鼠标事件 ----------
+        let isDrawing = false;
+        let isPanning = false;
+        let lastMouse = { x: 0, y: 0 };
+
+        displayCanvas.addEventListener('mousedown', (e) => {
+            const coord = getLogicalCoord(e);
+            if (e.button === 1 || e.button === 2) { // 中键或右键平移
+                isPanning = true;
+                lastMouse.x = e.clientX;
+                lastMouse.y = e.clientY;
+                displayCanvas.style.cursor = 'grabbing';
+                e.preventDefault();
+                return;
+            }
+            if (e.button === 0) {
+                isDrawing = true;
+                const { x, y } = coord;
+                switch (currentTool) {
+                    case 'pencil':
+                        setPixel(x, y, currentColor);
+                        break;
+                    case 'eraser':
+                        setPixel(x, y, '#000000');
+                        break;
+                    case 'fill':
+                        floodFill(x, y, currentColor);
+                        break;
+                    case 'picker':
+                        const color = getPixel(x, y);
+                        if (color) {
+                            // 转换为十六进制
+                            const rgb = color.match(/\d+/g);
+                            const hex = '#' + rgb.map(c => parseInt(c).toString(16).padStart(2,'0')).join('');
+                            document.getElementById('colorPicker').value = hex;
+                            currentColor = hex;
+                            updatePaletteActive(hex);
+                        }
+                        break;
+                }
+            }
+        });
+
+        displayCanvas.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                const dx = e.clientX - lastMouse.x;
+                const dy = e.clientY - lastMouse.y;
+                viewX -= dx / scale;
+                viewY -= dy / scale;
+                // 限制边界
+                viewX = Math.max(0, Math.min(canvasWidth - displayCanvas.width/scale, viewX));
+                viewY = Math.max(0, Math.min(canvasHeight - displayCanvas.height/scale, viewY));
+                lastMouse.x = e.clientX;
+                lastMouse.y = e.clientY;
+                render();
+                return;
+            }
+            if (isDrawing && (currentTool === 'pencil' || currentTool === 'eraser')) {
+                const coord = getLogicalCoord(e);
+                const { x, y } = coord;
+                if (x >= 0 && x < canvasWidth && y >= 0 && y < canvasHeight) {
+                    const color = currentTool === 'pencil' ? currentColor : '#000000';
+                    setPixel(x, y, color);
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDrawing = false;
+            isPanning = false;
+            displayCanvas.style.cursor = 'grab';
+        });
+
+        // 滚轮缩放
+        displayCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -1 : 1;
+            let newScale = scale + delta * 0.5;
+            newScale = Math.max(0.5, Math.min(40, newScale));
+            if (newScale !== scale) {
+                // 缩放中心保持鼠标位置不变
+                const rect = displayCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                const logicalX = viewX + mouseX / scale;
+                const logicalY = viewY + mouseY / scale;
+                scale = newScale;
+                zoomSlider.value = scale;
+                zoomDisplay.textContent = scale.toFixed(1) + 'x';
+                // 调整视口使鼠标指向的逻辑坐标不变
+                viewX = logicalX - mouseX / scale;
+                viewY = logicalY - mouseY / scale;
+                viewX = Math.max(0, Math.min(canvasWidth - displayCanvas.width/scale, viewX));
+                viewY = Math.max(0, Math.min(canvasHeight - displayCanvas.height/scale, viewY));
+                render();
+            }
+        });
+
+        // ---------- 缩放滑块 ----------
+        zoomSlider.addEventListener('input', () => {
+            const newScale = parseFloat(zoomSlider.value);
+            if (newScale !== scale) {
+                // 缩放中心保持在画布中心
+                const w = displayCanvas.width;
+                const h = displayCanvas.height;
+                const logicalX = viewX + w / (2 * scale);
+                const logicalY = viewY + h / (2 * scale);
+                scale = newScale;
+                zoomDisplay.textContent = scale.toFixed(1) + 'x';
+                viewX = logicalX - w / (2 * scale);
+                viewY = logicalY - h / (2 * scale);
+                viewX = Math.max(0, Math.min(canvasWidth - w/scale, viewX));
+                viewY = Math.max(0, Math.min(canvasHeight - h/scale, viewY));
+                render();
+            }
+        });
+
+        // ---------- 工具切换 ----------
+        document.querySelectorAll('[data-tool]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-tool]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentTool = btn.dataset.tool;
+            });
+        });
+
+        // ---------- 颜色选择 ----------
+        colorPicker.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            updatePaletteActive(currentColor);
+        });
+
+        // ---------- 调色板 ----------
+        function buildPalette() {
+            paletteContainer.innerHTML = '';
+            presetColors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'swatch';
+                swatch.style.backgroundColor = color;
+                swatch.dataset.color = color;
+                swatch.addEventListener('click', () => {
+                    currentColor = color;
+                    colorPicker.value = color;
+                    updatePaletteActive(color);
+                });
+                paletteContainer.appendChild(swatch);
+            });
+            updatePaletteActive(currentColor);
+        }
+
+        function updatePaletteActive(color) {
+            document.querySelectorAll('.swatch').forEach(el => {
+                el.classList.toggle('active', el.dataset.color === color);
+            });
+        }
+        buildPalette();
+
+        // ---------- 网格切换 ----------
+        document.getElementById('toggleGrid').addEventListener('click', function() {
+            showGrid = !showGrid;
+            this.classList.toggle('active');
+            render();
+        });
+        document.getElementById('toggleGrid').classList.add('active');
+
+        // ---------- 清空 ----------
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (confirm('确定清空画布吗？')) {
+                offCtx.fillStyle = '#000000';
+                offCtx.fillRect(0, 0, canvasWidth, canvasHeight);
+                render();
+            }
+        });
+
+        // ---------- 导出 PNG ----------
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `pixelart_${canvasWidth}x${canvasHeight}.png`;
+            link.href = offscreen.toDataURL('image/png');
+            link.click();
+        });
+
+        // ---------- 调整画布大小 ----------
+        document.getElementById('resizeBtn').addEventListener('click', () => {
+            const w = parseInt(document.getElementById('canvasWidth').value) || 64;
+            const h = parseInt(document.getElementById('canvasHeight').value) || 64;
+            if (w < 8 || w > 512 || h < 8 || h > 512) {
+                alert('尺寸范围 8~512');
+                return;
+            }
+            // 保存旧画布数据
+            const oldCanvas = document.createElement('canvas');
+            oldCanvas.width = canvasWidth;
+            oldCanvas.height = canvasHeight;
+            const oldCtx = oldCanvas.getContext('2d');
+            oldCtx.drawImage(offscreen, 0, 0);
+
+            // 重新创建离屏canvas
+            offscreen.width = w;
+            offscreen.height = h;
+            offCtx = offscreen.getContext('2d');
+            offCtx.imageSmoothingEnabled = false;
+            offCtx.fillStyle = '#000000';
+            offCtx.fillRect(0, 0, w, h);
+            // 复制旧数据到新画布（居中对齐）
+            const offsetX = Math.floor((w - canvasWidth) / 2);
+            const offsetY = Math.floor((h - canvasHeight) / 2);
+            offCtx.drawImage(oldCanvas, offsetX, offsetY);
+
+            canvasWidth = w;
+            canvasHeight = h;
+            document.getElementById('canvasWidth').value = w;
+            document.getElementById('canvasHeight').value = h;
+            sizeDisplay.textContent = `${w}×${h}`;
+            // 重置视口
+            viewX = 0;
+            viewY = 0;
+            render();
+        });
+
+        // ---------- 窗口大小变化自适应 ----------
+        window.addEventListener('resize', render);
+
+        // ---------- 初始化 ----------
+        resizeCanvas(64, 64);
+        // 默认选中铅笔
+        document.querySelector('[data-tool="pencil"]').classList.add('active');
+
+        // 禁用右键菜单
+        displayCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        console.log('✅ PixelArt 编辑器已加载');
+    })();
+</script>
+</body>
+</html>

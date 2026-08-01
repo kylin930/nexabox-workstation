@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>主菜单 - Win10 磁贴</title>
+
+    <!-- Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <!-- WinBox -->
+    <script src="https://cdn.jsdelivr.net/npm/winbox@0.2.82/dist/winbox.bundle.min.js">
+    </script>
+
+    <style>
+        /* ===== 全局重置 & 字体 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', '微软雅黑', sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+        }
+
+        /* ===== 顶部栏 ===== */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 40px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(6px);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .topbar .greeting h1 {
+            font-size: 26px;
+            font-weight: 300;
+            color: #1a1a2e;
+            letter-spacing: 0.5px;
+        }
+
+        .topbar .greeting h1 strong {
+            font-weight: 600;
+            color: #0078D7;
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .topbar .greeting h1 strong:hover {
+            background: rgba(0, 120, 215, 0.10);
+        }
+
+        /* 时钟：去掉图标和框，只保留纯文本，加粗 */
+        .topbar .clock {
+            font-size: 22px;
+            font-weight: 700;
+            color: #2d2d44;
+            letter-spacing: 1px;
+            background: transparent;
+            padding: 0;
+            border: none;
+            font-variant-numeric: tabular-nums;
+        }
+        .topbar .clock i {
+            display: none;
+        }
+
+        /* ===== 磁贴容器：靠左上角 ===== */
+        .tile-container {
+            flex: 1;
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            gap: 32px;
+            padding: 40px 40px;
+            flex-wrap: wrap;
+            align-content: flex-start;
+        }
+
+        /* ===== 单个磁贴 ===== */
+        .tile {
+            width: 170px;
+            height: 170px;
+            border-radius: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: flex-start;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+            transition: transform 0.18s ease, box-shadow 0.25s ease, filter 0.2s ease;
+            position: relative;
+            will-change: transform;
+            padding: 16px;
+            text-align: left;
+        }
+
+        /* 每个磁贴不同颜色 — Metro 色系 */
+        .tile-tl {
+            background: #0078D7;
+        }
+        .tile-search {
+            background: #00B050;
+        }
+        .tile-cloud {
+            background: #FF8C00;
+        }
+        /* 编辑器磁贴 — 紫色 */
+        .tile-editor {
+            background: #8E44AD;
+        }
+
+        /* 悬停效果 */
+        .tile:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+            filter: brightness(1.04);
+        }
+
+        .tile:active {
+            transform: scale(0.95) translateY(-2px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+            transition-duration: 0.06s;
+        }
+
+        /* 磁贴图标 */
+        .tile i {
+            font-size: 48px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
+            line-height: 1;
+            margin-top: 4px;
+        }
+
+        /* 磁贴标题（大标题）：放在左下角 */
+        .tile span:not(.badge) {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+            margin-top: auto;
+            margin-bottom: 0;
+        }
+
+        /* 右下角小装饰 */
+        .tile .badge {
+            position: absolute;
+            bottom: 5px;
+            right: 14px;
+            font-size: 12px;
+            opacity: 0.55;
+            font-weight: 300;
+            letter-spacing: 0.3px;
+        }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 700px) {
+            .topbar {
+                padding: 14px 20px;
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+            .topbar .greeting h1 {
+                font-size: 20px;
+            }
+            .topbar .clock {
+                font-size: 18px;
+            }
+            .tile-container {
+                padding: 20px;
+                gap: 18px;
+            }
+            .tile {
+                width: 130px;
+                height: 130px;
+                padding: 12px;
+            }
+            .tile i {
+                font-size: 38px;
+            }
+            .tile span:not(.badge) {
+                font-size: 17px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tile {
+                width: 100px;
+                height: 100px;
+                padding: 10px;
+            }
+            .tile i {
+                font-size: 28px;
+            }
+            .tile span:not(.badge) {
+                font-size: 14px;
+            }
+            .tile-container {
+                gap: 12px;
+                padding: 16px;
+            }
+        }
+        .tile-agent { background: #4A6A8A; }.tile-pixel { background: #8E44AD; }.tile-preview { background: #2C3E50; }.tile-designer { background: #2C3E50; }  /* 深灰蓝，与工业风格匹配 */
+        
+    </style>
+</head>
+<body>
+
+    <!-- ===== 顶部栏 ===== -->
+    <header class="topbar">
+        <div class="greeting">
+            <h1><strong>Welcome!</strong></h1>
+        </div>
+        <div class="clock">
+            <span id="clockDisplay">--:--:--</span>
+        </div>
+    </header>
+
+    <!-- ===== 磁贴区域 ===== -->
+    <main class="tile-container">
+
+        <!-- 翻译磁贴 -->
+        <div class="tile tile-tl" id="tileTranslator" role="button" tabindex="0" aria-label="打开翻译">
+            <i class="fas fa-globe"></i>
+            <span>翻译</span>
+            <span class="badge">Bing</span>
+        </div>
+
+        <!-- 搜索磁贴 -->
+        <div class="tile tile-search" id="tileSearch" role="button" tabindex="0" aria-label="打开搜索">
+            <i class="fas fa-search"></i>
+            <span>搜索</span>
+            <span class="badge">Local</span>
+        </div>
+
+        <!-- 编辑器磁贴（无限打开） -->
+        <div class="tile tile-editor" id="tileEditor" role="button" tabindex="0" aria-label="打开编辑器">
+            <i class="fas fa-edit"></i>
+            <span>编辑器</span>
+            <span class="badge">Editor</span>
+        </div>
+
+        <!-- AI 磁贴 -->
+        <div class="tile tile-agent" id="tileAgent" role="button" tabindex="0" aria-label="打开AI助手">
+            <i class="fas fa-bolt"></i>
+            <span>AI</span>
+            <span class="badge">NexAgent</span>
+        </div>
+
+        <!-- 像素画 -->
+        <div class="tile tile-pixel" id="tilePixel" role="button" tabindex="0">
+            <i class="fas fa-paint-brush"></i>
+            <span>像素画</span>
+            <span class="badge">PixelArt</span>
+        </div>
+
+        <!-- 预览器 -->
+        <div class="tile tile-preview" id="tilePreview" role="button" tabindex="0">
+            <i class="fas fa-eye"></i>
+            <span>预览器</span>
+            <span class="badge">Preview</span>
+        </div>
+
+        <!-- 设计器磁贴 -->
+    <div class="tile tile-designer" id="tileDesigner" role="button" tabindex="0" aria-label="打开UI设计器">
+        <i class="fas fa-pencil-ruler"></i>
+        <span>设计器</span>
+        <span class="badge">Designer</span>
+    </div>
+    </main>
+    <!-- ===== 右下角 About 按钮 ===== -->
+    <div id="aboutBtn" style="
+        position: fixed;
+        bottom: 12px;
+        right: 16px;
+        width: 16px;
+        height: 16px;
+        font-size: 14px;
+        line-height: 16px;
+        text-align: center;
+        color: rgba(255,255,255,0.25);
+        background: rgba(0,0,0,0.15);
+        border: 1px solid rgba(255,255,255,0.1);
+        cursor: pointer;
+        border-radius: 0;
+        font-family: 'Segoe UI', sans-serif;
+        transition: 0.2s;
+        z-index: 999;
+        user-select: none;
+        " title="关于">
+    ⓘ
+    </div>
+    <script>
+        function openDesigner() {
+            openWinBox('designer', {
+                title: '🧩 UI 设计器',
+                url: 'Designer.html',
+                width: '1100px',
+                height: '800px',
+            });
+        }
+        document.getElementById('tileDesigner').addEventListener('click', openDesigner);
+
+        function openPixelArt() {
+            openWinBox('pixel', {
+                title: '🎨 像素画编辑器',
+                url: 'PixelArt.html',
+                width: '900px',
+                height: '750px',
+            });
+        }
+        document.getElementById('tilePixel').addEventListener('click', openPixelArt);
+        function openPreview() {
+            openWinBox('preview', {
+                title: '📄 文档预览器',
+                url: 'Preview.html',
+                width: '900px',
+                height: '700px',
+            });
+        }
+        document.getElementById('tilePreview').addEventListener('click', openPreview);
+        document.getElementById('aboutBtn').addEventListener('click', function() {
+            new WinBox({
+                title: '📄 关于 Nexabox Workstation',
+                url: 'About.html',
+                width: '380px',
+                height: '260px',
+                x: 'center',
+                y: 'center',
+                class: ['no-full', 'no-min'],
+            });
+        });
+        function openAgent() {
+            openWinBox('agent', {
+                title: '⚡ NexAgent',
+                url: 'NexAgent.html',
+                width: '900px',
+                height: '750px',
+            });
+        }
+        document.getElementById('tileAgent').addEventListener('click', openAgent);
+
+        // ============================================================
+        //  1. 实时时钟
+        // ============================================================
+        const clockEl = document.getElementById('clockDisplay');
+
+        function updateClock() {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const str =
+                `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}  ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            clockEl.textContent = str;
+        }
+
+        updateClock();
+        setInterval(updateClock, 1000);
+
+        // ============================================================
+        //  2. WinBox 窗口管理（单例模式，适用于翻译、搜索、云盘）
+        // ============================================================
+        const windows = {
+            translator: null,
+            search: null,
+            agent: null,
+            pixel: null,
+            preview: null,
+            designer: null
+        };
+
+
+        function openWinBox(key, config) {
+            if (windows[key] && !windows[key].isClosed()) {
+                windows[key].focus();
+                return;
+            }
+
+            // 自动限制初始高度不超过视口高度的 85%
+            const maxHeight = window.innerHeight * 0.85;
+            if (config.height !== undefined) {
+                let numHeight = typeof config.height === 'string' ? parseInt(config.height) : config.height;
+                if (!isNaN(numHeight) && numHeight > maxHeight) {
+                    config.height = Math.floor(maxHeight) + 'px';
+                }
+            }
+
+            // 不再设置 maxheight，让用户可自由拖拽放大
+
+            const win = new WinBox({
+                x: 'center',
+                y: 'center',
+                onclose: function() {
+                    windows[key] = null;
+                },
+                ...config
+            });
+
+            windows[key] = win;
+        }
+        // ============================================================
+        //  3. 各功能入口（翻译、搜索、云盘使用单例）
+        // ============================================================
+        function openTranslator() {
+            openWinBox('translator', {
+                title: '🌐 必应翻译',
+                url: 'https://cn.bing.com/translator/',
+                width: '820px',
+                height: '540px',
+            });
+        }
+
+        function openSearch() {
+            openWinBox('search', {
+                title: '🔍 搜索',
+                url: 'Search.html',
+                width: '720px',
+                height: '560px',
+            });
+        }
+        // ============================================================
+        //  4. 编辑器入口 —— 每次打开都是新窗口（无限制）
+        // ============================================================
+        function openEditor() {
+            new WinBox({
+                title: '📝 编辑器',
+                url: 'Editor.html',
+                width: '920px',
+                height: '400px',
+                x: 'center',
+                y: 'center',
+                // 不缓存，不设置 onclose 置空，因为每次都是新建
+            });
+        }
+        // ============================================================
+        //  5. 绑定磁贴点击事件
+        // ============================================================
+        document.getElementById('tileTranslator').addEventListener('click', openTranslator);
+        document.getElementById('tileSearch').addEventListener('click', openSearch);
+        document.getElementById('tileEditor').addEventListener('click', openEditor);
+
+        // 键盘支持 (Enter / Space)
+        document.querySelectorAll('.tile').forEach(el => {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    el.click();
+                }
+            });
+        });
+
+        console.log('✅ 主菜单已加载 — Win10 直角磁贴风格');
+        console.log('📝 编辑器磁贴每次点击都会创建新窗口（无限打开）');
+    </script>
+
+</body>
+</html>

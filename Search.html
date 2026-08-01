@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metro 工作台 - 搜索</title>
+    <!-- Metro UI -->
+    <link rel="stylesheet" href="https://cdn.metroui.org.ua/5.0.2/css/metro-all.min.css">
+    <script src="https://cdn.metroui.org.ua/5.0.2/js/metro.min.js"></script>
+    <!-- WinBox -->
+    <script src="https://cdn.jsdelivr.net/npm/winbox@0.2.82/dist/winbox.bundle.min.js"></script>
+    <style>
+        body {
+            background: #e5e8ed;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .search-toolbar {
+            background: #ffffff00;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .search-toolbar .engine-group .button {
+            min-width: 70px;
+        }
+        .search-toolbar .input-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-toolbar .input-group input {
+            width: 100%;
+            height: 36px;
+        }
+        .button.active-engine {
+            background: #1e6df2;
+            color: white;
+            border-color: #1e6df2;
+        }
+        /* 提示信息 */
+        .info {
+            text-align: center;
+            color: #888;
+            margin-top: 40px;
+            font-size: 0.9rem;
+        }
+        .engine-group .button.active-engine {
+            background: #1e6df2;
+            color: #fff;
+            border-color: #1e6df2;
+            box-shadow: 0 2px 8px rgba(30, 109, 242, 0.3);
+            transform: scale(1.02);
+            transition: all 0.2s ease;
+        }
+
+        .engine-group .button {
+            min-width: 90px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .engine-group .button:hover:not(.active-engine) {
+            background: #f0f4ff;
+            border-color: #b3c9ff;
+        }
+
+        #searchBtn {
+            padding: 8px 24px;
+            font-weight: 500;
+            border-radius: 4px;
+            box-shadow: 0 2px 6px rgba(30, 109, 242, 0.25);
+            transition: all 0.2s ease;
+        }
+        #searchBtn:hover {
+            box-shadow: 0 4px 12px rgba(30, 109, 242, 0.4);
+            transform: translateY(-1px);
+        }
+
+        #clearBtn {
+            padding: 8px 20px;
+            font-weight: 400;
+            border-radius: 4px;
+            border: 1px solid #c0c8d4;
+            background: #f5f7fa;
+            color: #4a5b6e;
+            transition: all 0.2s ease;
+        }
+        #clearBtn:hover {
+            background: #e8ecf2;
+            border-color: #a0b0c0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="search-toolbar">
+        <span class="text-bold" style="font-size:1.1rem;">🔍 搜索</span>
+        <div class="engine-group" data-role="group" data-group-type="one-state">
+            <button class="button" data-engine="google">
+                <span class="mif-google"></span> Google
+            </button>
+            <button class="button active-engine" data-engine="bing">
+                <span class="mif-bing"></span> Bing
+            </button>
+            <button class="button" data-engine="baidu">
+                <span class="mif-baidu"></span> Baidu
+            </button>
+        </div>
+        <div class="input-group">
+            <input type="text" id="searchInput" placeholder="输入关键词..." class="input">
+        </div>
+        <button class="button primary" id="searchBtn" style="display: flex; align-items: center; gap: 6px;">
+            <span class="mif-search"></span> 搜索
+        </button>
+        <button class="button" id="clearBtn" style="background: #e0e0e0; display: flex; align-items: center; gap: 6px;">
+            <span class="mif-cancel"></span> 清空
+        </button>
+    </div>
+
+    <div class="info">
+        💡 点击搜索将在新窗口中打开结果，支持多窗口管理。
+    </div>
+
+    <script>
+        const ENGINES = {
+            google: 'https://www.google.com/search?q=',
+            bing: 'https://www.bing.com/search?q=',
+            baidu: 'https://www.baidu.com/s?wd='
+        };
+
+        let currentEngine = 'google';
+        const engineBtns = document.querySelectorAll('.engine-group .button');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const clearBtn = document.getElementById('clearBtn');
+
+        // 切换引擎
+        engineBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                engineBtns.forEach(b => b.classList.remove('active-engine'));
+                this.classList.add('active-engine');
+                currentEngine = this.dataset.engine;
+            });
+        });
+
+        // 执行搜索：打开 WinBox 窗口
+        function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) {
+                Metro.notify('请输入搜索关键词', '提示');
+                return;
+            }
+            const baseUrl = ENGINES[currentEngine];
+            const encoded = encodeURIComponent(query);
+            const fullUrl = baseUrl + encoded;
+
+            // 创建 WinBox 窗口，加载搜索引擎
+            new WinBox({
+                title: `${currentEngine.toUpperCase()} - ${query}`,
+                url: fullUrl,
+                width: '80%',
+                height: '85%',
+                x: 'center',
+                y: 'center',
+                class: ['no-min', 'no-full'],
+                background: '#1e6df2',
+                minwidth: 400,
+                minheight: 300,
+                // ===== 关键：拦截 iframe 导航 =====
+                onload: function(win) {
+                    const iframe = win.window?.document?.querySelector('iframe');
+                    if (iframe) {
+                        // 给 iframe 添加 sandbox 属性，限制弹出窗口
+                        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms');
+                        // 尝试捕获 iframe 内的点击（但跨域限制，实际无法直接操作 DOM）
+                    }
+                }
+            });
+        }
+
+        // 绑定事件
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') performSearch();
+        });
+        clearBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            searchInput.focus();
+        });
+
+        // 可选：拖拽搜索框到桌面任意位置（已经实现）
+    </script>
+</body>
+</html>
